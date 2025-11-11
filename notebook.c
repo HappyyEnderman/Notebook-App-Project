@@ -29,7 +29,7 @@ DIR *current_directory = NULL;
 
 //Prototypes
 int checkUser(char* username, char* password);
-void makeUser(char* username, char* password);
+int makeUser(char* username, char* password);
 void makeNotebook(char* notebook_name);
 void makeNote(char* note);
 
@@ -42,10 +42,11 @@ int main(){
 		return 1;
 	}
 	char *username_test = malloc(40 * sizeof(char));
-	strcpy(username_test, "jmerrick@iastate.edu");
-	char *password_test = malloc(9 * sizeof(char));
-	strcpy(password_test, "PaSSW1!");
-	printf("%d", checkUser(username_test, password_test));
+	strcpy(username_test, "notascam@rnicrosoft.com");
+	char *password_test = malloc(40 * sizeof(char));
+	strcpy(password_test, "Get5cammed!");
+	printf("%d\n", checkUser(username_test, password_test));
+	printf("%d", makeUser(username_test, password_test));
 	free(password_test);
 	free(username_test);
 }
@@ -203,4 +204,57 @@ int checkUser(char* username, char* password){
 	return big_flag;
 }
 		
-
+/**
+*Creates the file structure for a new user if the username and password meets requirements
+*File structure is a directory named with the user's email and a text file within the directory containing the username and password
+*Notebooks will also be added to this text file, but not when the profile is made
+*returns 1 on success or 0 on failure
+*/
+int makeUser(char* username, char* password){
+	if(checkUser(username, password)){
+		//Puts the file path for the user directory into a string
+		char *path = malloc((9 + strlen(username)) * sizeof(char));
+		if(path == NULL){
+			printf("Memory allocation failed.\n");
+			return 0;
+		}
+		strcpy(path, "./Users/");
+		strcat(path, username);
+		//Makes a directory and checks for success
+		/*
+		0755 is used to give only the owner write access
+		Group members and others can only read and execute files
+		If code doesn't work, try changing to 0777 so all profiles have access, or making sure you are the file's owner
+		*/
+		if(mkdir(path, 0755) == 0){
+			//Make the user profile file
+			//changes path to point to a user profile path
+			path = realloc(path, (strlen(path) + 18) * sizeof(char));
+			if(path == NULL){
+				printf("Memory allocation failed.\n");
+				return 0;
+			}
+			strcat(path, "/User_Settings.txt");
+			//fopen creates a file if it does not exist
+			FILE *user_settings = fopen(path, "w");
+			if(user_settings == NULL){
+				printf("Failed to create user settings.\n");
+				return 0;
+			}
+			fprintf(user_settings, "Email: %s\n", username);
+			fprintf(user_settings, "Password: %s\n", password);
+			fclose(user_settings);
+			free(path);
+			return 1;
+		}
+		//Return an error if mkdir fails
+		else{
+			printf("An unexpected error occured creating the user directory.\n");
+			return 0;
+		}
+	}
+	//Return an error if the username and password do not meet conditions
+	//No error message is printed as checkUser will give error messages
+	return 0;
+}
+		
