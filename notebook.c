@@ -12,8 +12,11 @@
 typedef struct User{
 	char *email;
 	char *password;
+	char *filepath;
 } User;
 
+//I plan on changing Notebooks and notes to be the same structure, since they work similarly and it allows one function to sort both types
+//Two structures of this type will be in User, mainly to meet how we said it would be done in the proposal
 typedef struct Notebook{
 	char *name;
 	struct Notebook* nextNotebook;
@@ -24,45 +27,143 @@ typedef struct Note{
 	struct Note* nextNote;
 } Note;
 
+//Enums
+//An enum to mark what layer of the structure the user is in
+typedef enum Position{
+	ENTRY,
+	USER,
+	NOTEBOOKS
+}Position;
 //Global Variables
-DIR *current_directory = NULL;
 
 //Prototypes
+int directoryExists(char* directory_name, char* current_directory);
 int checkUser(char* username, char* password);
 int makeUser(char* username, char* password);
+User login(char* username, char* password);
 void makeNotebook(char* notebook_name);
+int loadNotebooks(User *user, FILE *settings);
 void makeNote(char* note);
 
 //Main function
 int main(){
-	//sets the current directory to the working directory
-	current_directory = opendir(".");
-	if(!current_directory){
-		printf("Error launching the active directory.\n");
-		return 1;
+	//variables to control the interface
+	int running = 1;
+	int input = 0;
+	Position position = ENTRY;
+	User user;
+	//User Interface for the system
+	printf("——Welcome to EasyNote——\n");
+	while(running){
+		switch(position){
+			//Login Page Menu
+			case ENTRY:
+			printf("Please select a menu option:\n");
+			printf("1. Log in\n");
+			printf("2. Sign up\n");
+			printf("3. Exit Program\n");
+			scanf("%d", &input);
+			
+			switch(input){
+				case 1: { //Braces are used to limit the scop of the email and password variables
+					char *email = malloc(322 * sizeof(char)); // 322 allows for null terminator and to detect if it is over 320 characters
+					char *password = malloc(30 * sizeof(char));
+					printf("Enter email adress: ");
+					scanf("%321s", email);
+					printf("Enter password: ");
+					scanf("%29s", password);
+					//Attempts login
+					if(checkUser(email, password)){
+						user = login(email, password);
+						//Checks if login was successful befor moving to user level
+						if(strlen(user.email) == 0){
+							position = USER;
+						}
+					}
+					break;
+				}
+				case 2: {
+					//Prompts for email and password_length
+					char *email = malloc(322 * sizeof(char)); // 322 allows for null terminator and to detect if it is over 320 characters
+					char *password = malloc(30 * sizeof(char));
+					printf("Enter email adress: ");
+					scanf("%321s", email);
+					printf("Enter password: ");
+					scanf("%321s", password);
+					//Creates user account
+					makeUser(email, password);
+					free(email);
+					free(password);
+					//Changes interface level to user
+					position = USER;
+					break;
+				}
+				case 3:
+					running = 0;
+					break;
+				default:
+					printf("Input not recognized\n");
+					break;
+			}
+			break;
+			
+			//Notebooks and Account Deletion Menu
+			case USER:
+				printf("Under Construction: Returning to login screen.\n");
+				position = ENTRY;
+				break;
+				
+			//Create and Edit Notes Menu
+			case NOTEBOOKS:
+				printf("Under Construction: Returning to login screen\n");
+				position = ENTRY;
+				break;
+				
+			//This should be impossible to reach, but protects against edge cases with the user position
+			default:
+				printf("An unknown error has occurred. Returning to login screen. All unsaved progress will be lost.\n");
+				position = ENTRY;
+				break;
+		}
 	}
-	char *username_test = malloc(40 * sizeof(char));
-	strcpy(username_test, "notascam@rnicrosoft.com");
-	char *password_test = malloc(40 * sizeof(char));
-	strcpy(password_test, "Get5cammed!");
-	printf("%d\n", checkUser(username_test, password_test));
-	printf("%d", makeUser(username_test, password_test));
-	free(password_test);
-	free(username_test);
 }
 
-/**
+/*
+*Checks if a directory exists within the current directory
+*Returns 1 if it exists, 0 if it doesn't, and -1 if there was an error opening the directory
+*/
+int directoryExists(char* directory_name, char* current_directory){
+	//Opens the current directory and verifies success
+	DIR *directory = opendir(current_directory);
+	if(directory == NULL){
+		return -1;
+	}
+	else{
+		//Reads the subdirectories into a dirent that will include the subdirectory names
+		struct dirent *existing_dir = readdir(directory);
+		while(existing_dir != NULL){
+			//Checks if the name of a subdirectory matches the requested directory name
+			if(strcmp(existing_dir->d_name, directory_name) == 0){
+				return 1;
+				break;
+			}
+			existing_dir = readdir(directory);
+		}
+		closedir(directory);
+	}
+	return 0;
+}
+
+/*
 *Verifies the user email and password meet requirements and gives all corresponding error messages
 *Username is an email which must contain an '@' character with a '.' character after
 *Username is between 5 and 320 characters
 *Username must not have any odd characters (listed below)
-*Username must not be used by another account
 *Password must have one uppercase letter and one lowercase letter
 *Password must contain a number and special character
 *Password must be between 7 and 28 characters
 *Returns 1 on successful creation or 0 on a failed creation
 */
-//folders cannot contain \/*?"<>|
 int checkUser(char* username, char* password){
 	//Creates a flag that is set to 0 if there is ever an error in email or password
 	int big_flag = 1;
@@ -95,32 +196,6 @@ int checkUser(char* username, char* password){
 			break;
 		}
 	}
-		
-	//Checks if email is a repeat
-	//Opens the Users directory and verifies success
-	DIR *users = opendir("./Users");
-	if(users == NULL){
-		printf("ERROR: Failed to check other users.\n");
-		big_flag = 0;
-	}
-	else{
-		//Reads the subdirectories of Users into a dirent that will include the subdirectory names
-		struct dirent *existing_usernames = readdir(users);
-		while(existing_usernames != NULL){
-			//Checks if the name of the subdirectory matches the username
-			//Subdirectories will be named with the username, so this checks that there is no overlap
-			if(strcmp(existing_usernames->d_name, username) == 0){
-				printf("An account already exists with this email.\n");
-				big_flag = 0;
-				break;
-			}
-			existing_usernames = readdir(users);
-		}
-		closedir(users);
-	}
-	
-			
-	
 	
 	//Checks if password contains an uppercase letter
 	int small_flag = 0;
@@ -204,14 +279,27 @@ int checkUser(char* username, char* password){
 	return big_flag;
 }
 		
-/**
+/*
 *Creates the file structure for a new user if the username and password meets requirements
 *File structure is a directory named with the user's email and a text file within the directory containing the username and password
 *Notebooks will also be added to this text file, but not when the profile is made
+*Email must not exist for this email already
 *returns 1 on success or 0 on failure
 */
 int makeUser(char* username, char* password){
 	if(checkUser(username, password)){
+		
+		//Checks if email is a repeat
+		int flag = directoryExists(username, "./Users");
+		if(flag == -1){
+			printf("Failed to check existing users. Please try again.\n");
+			return 0;
+		}
+		else if(flag == 1){
+			printf("An account already exists with that email.\n");
+			return 0;
+		}
+		
 		//Puts the file path for the user directory into a string
 		char *path = malloc((9 + strlen(username)) * sizeof(char));
 		if(path == NULL){
@@ -258,3 +346,83 @@ int makeUser(char* username, char* password){
 	return 0;
 }
 		
+/*
+*Attempts to log the user into an existing account
+*Returns a User struct with the user information
+*Loads the notebooks associated with the user (NOT DONE YET)
+*/
+User login(char* username, char* password){
+	User output;
+	//Checks if the user account exists as a directory
+	if(directoryExists(username, "./Users") == 1){
+		//Create the path to the user's settings file and open it
+		char *filepath = malloc((27 + strlen(username))*sizeof(char));
+		strcpy(filepath, "./Users/");
+		strcat(filepath, username);
+		
+		//Sets the user path to the account's directory
+		output.filepath = malloc((strlen(filepath) + 1) * sizeof(char));
+		strcpy(output.filepath, filepath);
+		
+		//Finishes setting the filepath to user settings
+		strcat(filepath, "/User_Settings.txt");
+		FILE *user_settings = fopen(filepath, "r");
+		//Ensures no error occurs in opening the file
+		if(user_settings == NULL){
+			printf("An error occurred when checking account's password.\n");
+			//Returns a null user. This needs checked outside the function.
+			return output;
+		}
+		
+		//Reads the username and password of the account
+		/*IMPORTANT: The space at the start of the inputs from fscanf allows the program to skip whitespace.
+		Without it, the newline would be read immediately when checking password, giving it no value.*/
+		output.email = malloc(321 * sizeof(char));
+		fscanf(user_settings, " Email: %320s", output.email);
+		output.password = malloc(29 * sizeof(char));
+		fscanf(user_settings, " Password: %28s", output.password);
+		
+		//Reconfirms email matches and checks the password
+		//Clears previous data and returns an error if either the username or password don't match
+		if(!(strcmp(output.password, password) == 0 && strcmp(output.email, username) == 0)){
+			free(output.email);
+			free(output.password);
+			free(output.filepath);
+			fclose(user_settings);
+			printf("Email or password does not match.\n");
+			return output;
+		}
+		//Reads the notebooks from user settings and stores them
+		if(loadNotebooks(&output, user_settings) == 1){
+			fclose(user_settings);
+			return output;
+		}
+		//Returns an error if loadNotebooks fails
+		else{
+			free(output.email);
+			free(output.password);
+			free(output.filepath);
+			//free(output.notebooks);
+			fclose(user_settings);
+			printf("Failed to load notebooks.\n");
+			return output;
+		}
+	}
+	//Returns an error if no directory exists
+	//A real system would want to use a more general error message for user privacy, but here it is helpful for identifying where things fail, so it has been kept
+	printf("No account exists with that email.\n");
+	return output;
+}
+
+
+/*
+*UNIMPLEMENTED
+*Loads the notebook names from the user settings 
+*Notebooks are put into a currently uncreated struct within users to efficiently store notes and such
+*Current thought is that it will only be called in login, so you can count on the first 2 lines having been read already
+*Returns 1 on success and 0 on failure
+*IMPORTANT: If read from directories, order will not be kept, so it is important to read from the user settings list instead
+*/
+int loadNotebooks(User *user, FILE *settings){
+	return 1;
+}
