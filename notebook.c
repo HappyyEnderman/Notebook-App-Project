@@ -5,27 +5,39 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <dirent.h>
 
 
 //Structures
+/*A general structure for notes and notebooks
+*Name is the title of the notebook or contents of the note
+*Time_created is an integer time that can easily be compared
+*/
+typedef struct Writing{
+	time_t time_created;
+	char* name;
+} Writing;
+
+/*Structure to store the active user
+*Login information (mostly unused)
+*filepaths to the user directory and the open notebook
+*arrays containing notes and notebooks
+*number of notes and notebooks
+*/
 typedef struct User{
 	char *email;
 	char *password;
 	char *filepath;
+	Writing *notebooks;
+	int notebook_count;
+	char *notebook_path;
+	Writing *notes;
+	int note_count;
 } User;
 
-//I plan on changing Notebooks and notes to be the same structure, since they work similarly and it allows one function to sort both types
-//Two structures of this type will be in User, mainly to meet how we said it would be done in the proposal
-typedef struct Notebook{
-	char *name;
-	struct Notebook* nextNotebook;
-} Notebook;
 
-typedef struct Note{
-	char *name;
-	struct Note* nextNote;
-} Note;
+
 
 //Enums
 //An enum to mark what layer of the structure the user is in
@@ -38,9 +50,13 @@ typedef enum Position{
 
 //Prototypes
 int directoryExists(char* directory_name, char* current_directory);
+
 int checkUser(char* username, char* password);
 int makeUser(char* username, char* password);
+int deleteUser(User *user);
+void logout(User *user);
 User login(char* username, char* password);
+
 void makeNotebook(char* notebook_name);
 int loadNotebooks(User *user, FILE *settings);
 void makeNote(char* note);
@@ -51,7 +67,7 @@ int main(){
 	int running = 1;
 	int input = 0;
 	Position position = ENTRY;
-	User user;
+	User user = {0};
 	//User Interface for the system
 	printf("——Welcome to EasyNote——\n");
 	while(running){
@@ -76,7 +92,7 @@ int main(){
 					if(checkUser(email, password)){
 						user = login(email, password);
 						//Checks if login was successful befor moving to user level
-						if(strlen(user.email) == 0){
+						if(strlen(user.email) != 0){
 							position = USER;
 						}
 					}
@@ -109,8 +125,28 @@ int main(){
 			
 			//Notebooks and Account Deletion Menu
 			case USER:
-				printf("Under Construction: Returning to login screen.\n");
-				position = ENTRY;
+				printf("Please select a menu option:\n");
+				printf("1. UNDER CONSTRUCTION\n");
+				printf("2. Logout\n");
+				printf("3. Delete Account\n");
+				scanf("%d", &input);
+				switch(input){
+				case 1:
+					printf("UNDER CONSTRUCTION\n");
+					break;
+				
+				case 2:
+					logout(&user);
+					position = ENTRY;
+					break;
+				case 3:
+					deleteUser(&user);
+					position = ENTRY;
+					break;
+				default:
+					printf("Input not recognized\n");
+					break;
+			}
 				break;
 				
 			//Create and Edit Notes Menu
@@ -144,6 +180,7 @@ int directoryExists(char* directory_name, char* current_directory){
 		while(existing_dir != NULL){
 			//Checks if the name of a subdirectory matches the requested directory name
 			if(strcmp(existing_dir->d_name, directory_name) == 0){
+				closedir(directory);
 				return 1;
 				break;
 			}
@@ -308,6 +345,7 @@ int makeUser(char* username, char* password){
 		}
 		strcpy(path, "./Users/");
 		strcat(path, username);
+		
 		//Makes a directory and checks for success
 		/*
 		0755 is used to give only the owner write access
@@ -315,6 +353,19 @@ int makeUser(char* username, char* password){
 		If code doesn't work, try changing to 0777 so all profiles have access, or making sure you are the file's owner
 		*/
 		if(mkdir(path, 0755) == 0){
+			//Creates the user Notebooks subdirectory
+			char *notebook_path = malloc((11 + strlen(path)) * sizeof(char));
+			if(notebook_path == NULL){
+				printf("Memory allocation failed.\n");
+				return 0;
+			}
+			strcpy(notebook_path, path);
+			strcat(notebook_path, "/Notebooks");
+			if(mkdir(notebook_path, 0755) == -1){
+				perror("Failed to create notebooks subdirectory");
+				return 0;
+			}
+			
 			//Make the user profile file
 			//changes path to point to a user profile path
 			path = realloc(path, (strlen(path) + 18) * sizeof(char));
@@ -326,7 +377,7 @@ int makeUser(char* username, char* password){
 			//fopen creates a file if it does not exist
 			FILE *user_settings = fopen(path, "w");
 			if(user_settings == NULL){
-				printf("Failed to create user settings.\n");
+				perror("Failed to create user settings");
 				return 0;
 			}
 			fprintf(user_settings, "Email: %s\n", username);
@@ -337,13 +388,81 @@ int makeUser(char* username, char* password){
 		}
 		//Return an error if mkdir fails
 		else{
-			printf("An unexpected error occured creating the user directory.\n");
+			perror("Failed to make user directory");
 			return 0;
 		}
 	}
 	//Return an error if the username and password do not meet conditions
 	//No error message is printed as checkUser will give error messages
 	return 0;
+}
+
+/*
+*Removes all files under the user directory
+*Removes the user directory
+*Logs user out of account
+*/
+int deleteUser(User *user){
+	//Creates a filepath to the notebooks directory
+	char *notebook_path = malloc ((11 + strlen(user->filepath)) * sizeof(char));
+	if(notebook_path == NULL){
+		printf("Memory allocation failed.\n");
+		return 0;
+	}
+	strcpy(notebook_path, user->filepath);
+	strcat(notebook_path, "/Notebooks");
+	//Opens the notebooks directory
+	DIR *notebooks_folder = opendir(notebook_path);
+	if(notebooks_folder == NULL){
+		perror("Failed to open directory");
+		free(notebook_path);
+		return 0;
+	}
+	
+	//Removes all files within the notebooks directory
+	struct dirent *existing_files = readdir(notebooks_folder);
+	while(existing_files != NULL){
+		if(strcmp(existing_files->d_name, ".") != 0 && strcmp(existing_files->d_name, "..") != 0){
+			char *filepath = malloc((strlen(existing_files->d_name) + strlen(notebook_path) + 2) * sizeof(char));
+			if(filepath == NULL){
+				printf("Memory allocation failed.\n");
+				free(filepath);
+				return 0;
+			}
+			strcpy(filepath, notebook_path);
+			strcat(filepath, "/");
+			strcat(filepath, existing_files->d_name);
+			if(remove(filepath) != 0){
+				free(filepath);
+				perror("Failed to remove notebook");
+			}
+			free(filepath);
+		}
+		existing_files = readdir(notebooks_folder);
+	}
+	closedir(notebooks_folder);
+	
+	//Deletes the notebooks directory
+	if(rmdir(notebook_path) != 0){
+		perror("Failed to remove directory");
+	}
+	free(notebook_path);
+	
+	//Deletes user settings
+	char *settings_path = malloc((strlen(user->filepath) + 18) * sizeof(char));
+	strcpy(settings_path, user->filepath);
+	strcat(settings_path, "/User_Settings.txt");
+	if(remove(settings_path) != 0){
+		perror("Failed to remove user settings");
+		free(settings_path);
+	}
+	free(settings_path);
+	//Deletes the user path
+	if(rmdir(user->filepath) != 0){
+		perror("Failed to remove user directory");
+	}
+	//logout(user);
+	return 1;
 }
 		
 /*
@@ -362,14 +481,19 @@ User login(char* username, char* password){
 		
 		//Sets the user path to the account's directory
 		output.filepath = malloc((strlen(filepath) + 1) * sizeof(char));
+		if(output.filepath == NULL){
+			free(filepath);
+			printf("Failed to allocate memory");
+		}
 		strcpy(output.filepath, filepath);
-		
 		//Finishes setting the filepath to user settings
 		strcat(filepath, "/User_Settings.txt");
 		FILE *user_settings = fopen(filepath, "r");
+		free(filepath);
 		//Ensures no error occurs in opening the file
 		if(user_settings == NULL){
-			printf("An error occurred when checking account's password.\n");
+			logout(&output);
+			printf("An error occurred when checking account's password.\n");;
 			//Returns a null user. This needs checked outside the function.
 			return output;
 		}
@@ -378,16 +502,24 @@ User login(char* username, char* password){
 		/*IMPORTANT: The space at the start of the inputs from fscanf allows the program to skip whitespace.
 		Without it, the newline would be read immediately when checking password, giving it no value.*/
 		output.email = malloc(321 * sizeof(char));
+		if(output.email == NULL){
+			logout(&output);
+			printf("Failed to allocate memory.\n");
+			return output;
+		}
 		fscanf(user_settings, " Email: %320s", output.email);
 		output.password = malloc(29 * sizeof(char));
+		if(output.password == NULL){
+			logout(&output);
+			printf("Failed to allocate memory.\n");
+			return output;
+		}
 		fscanf(user_settings, " Password: %28s", output.password);
 		
 		//Reconfirms email matches and checks the password
 		//Clears previous data and returns an error if either the username or password don't match
 		if(!(strcmp(output.password, password) == 0 && strcmp(output.email, username) == 0)){
-			free(output.email);
-			free(output.password);
-			free(output.filepath);
+			logout(&output);
 			fclose(user_settings);
 			printf("Email or password does not match.\n");
 			return output;
@@ -399,11 +531,7 @@ User login(char* username, char* password){
 		}
 		//Returns an error if loadNotebooks fails
 		else{
-			free(output.email);
-			free(output.password);
-			free(output.filepath);
-			//free(output.notebooks);
-			fclose(user_settings);
+			logout(&output);
 			printf("Failed to load notebooks.\n");
 			return output;
 		}
@@ -414,6 +542,17 @@ User login(char* username, char* password){
 	return output;
 }
 
+//Clears all contents of the User argument
+void logout(User *user){
+	free(user->email);
+	free(user->password);
+	free(user->filepath);
+	free(user->notebooks);
+	free(user->notebook_path);
+	free(user->notes);
+	user->notebook_count = 0;
+	user->note_count = 0;
+}
 
 /*
 *UNIMPLEMENTED

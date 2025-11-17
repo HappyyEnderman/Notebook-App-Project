@@ -1,2 +1,0 @@
-Email: this@email.com
-Password: Passw0rd!
