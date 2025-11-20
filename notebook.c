@@ -50,16 +50,19 @@ typedef enum Position{
 //Global Variables
 
 //Prototypes
+//General Functions
 int directoryExists(char* directory_name, char* current_directory);
 
+//User Management Functions
 int checkUser(char* username, char* password);
 int makeUser(char* username, char* password, User* user);
 int deleteUser(User *user);
-void logout(User *user);
 User login(char* username, char* password);
+void logout(User *user);
 
-void makeNotebook(char* notebook_name);
-int loadNotebooks(User *user, FILE *settings);
+//Notebook Management Functions
+int makeNotebook(char* notebook_name, User* user);
+int loadNotebooks(User *user, char *filepath);
 void makeNote(char* note);
 
 //Main function
@@ -83,10 +86,10 @@ int main(){
 			
 			switch(input){
 				case 1: { //Braces are used to limit the scop of the email and password variables
-					char *email = malloc(322 * sizeof(char)); // 322 allows for null terminator and to detect if it is over 320 characters
+					char *email = malloc(130 * sizeof(char)); // 130 allows for null terminator and to detect if it is over 128 characters
 					char *password = malloc(30 * sizeof(char));
 					printf("Enter email adress: ");
-					scanf("%321s", email);
+					scanf("%129s", email);
 					printf("Enter password: ");
 					scanf("%29s", password);
 					//Attempts login
@@ -101,12 +104,12 @@ int main(){
 				}
 				case 2: {
 					//Prompts for email and password_length
-					char *email = malloc(322 * sizeof(char)); // 322 allows for null terminator and to detect if it is over 320 characters
+					char *email = malloc(130 * sizeof(char)); // 130 allows for null terminator and to detect if it is over 128 characters
 					char *password = malloc(30 * sizeof(char));
 					printf("Enter email adress: ");
-					scanf("%321s", email);
+					scanf("%129s", email);
 					printf("Enter password: ");
-					scanf("%321s", password);
+					scanf("%29s", password);
 					//Creates user account
 					if(makeUser(email, password, &user)){
 						//Changes interface level to user
@@ -128,23 +131,44 @@ int main(){
 			//Notebooks and Account Deletion Menu
 			case USER:
 				printf("Please select a menu option:\n");
-				printf("1. UNDER CONSTRUCTION\n");
+				printf("1. Make Notebook\n");
 				printf("2. Logout\n");
 				printf("3. Delete Account\n");
 				scanf("%d", &input);
 				switch(input){
-				case 1:
-					printf("UNDER CONSTRUCTION\n");
+				case 1:{
+					//Scans notebook name
+					char *notebook_name = malloc(66 * sizeof(char));
+					printf("Enter Notebook Name: ");
+					scanf("%65s", notebook_name);
+					makeNotebook(notebook_name, &user);
+					free(notebook_name);
 					break;
-				
+				}
 				case 2:
 					logout(&user);
 					position = ENTRY;
 					break;
-				case 3:
-					deleteUser(&user);
-					position = ENTRY;
+				case 3:{
+					//Confirms account deletion
+					char confirmation;
+					printf("Are you sure you want to delete your account (Y/N): ");
+					scanf(" %c", &confirmation);
+					if(toupper(confirmation) == 'Y'){
+						//Deletes the account
+						if(deleteUser(&user)){
+							printf("Account deletion successful\n");
+							position = ENTRY;
+						}
+						else{
+							printf("Account deletion partially or entirely failed\n");
+						}
+					}
+					else{
+						printf("Account deletion cancelled\n");
+					}
 					break;
+				}
 				default:
 					printf("Input not recognized\n");
 					break;
@@ -193,10 +217,11 @@ int directoryExists(char* directory_name, char* current_directory){
 	return 0;
 }
 
+
 /*
 *Verifies the user email and password meet requirements and gives all corresponding error messages
 *Username is an email which must contain an '@' character with a '.' character after
-*Username is between 5 and 320 characters
+*Username is between 5 and 128 characters
 *Username must not have any odd characters (listed below)
 *Password must have one uppercase letter and one lowercase letter
 *Password must contain a number and special character
@@ -220,9 +245,9 @@ int checkUser(char* username, char* password){
 		big_flag = 0;
 	}
 	
-	//Checks for valid email length (5-320 characters)
-	if(username_length < 5 || username_length > 320){
-		printf("Email must be between 5 and 320 characters.\n");
+	//Checks for valid email length (5-128 characters)
+	if(username_length < 5 || username_length > 128){
+		printf("Email must be between 5 and 128 characters.\n");
 		big_flag = 0;
 	}
 	
@@ -504,13 +529,13 @@ User login(char* username, char* password){
 		//Reads the username and password of the account
 		/*IMPORTANT: The space at the start of the inputs from fscanf allows the program to skip whitespace.
 		Without it, the newline would be read immediately when checking password, giving it no value.*/
-		output.email = malloc(321 * sizeof(char));
+		output.email = malloc(129 * sizeof(char));
 		if(output.email == NULL){
 			logout(&output);
 			printf("Failed to allocate memory.\n");
 			return output;
 		}
-		fscanf(user_settings, " Email: %320s", output.email);
+		fscanf(user_settings, " Email: %128s", output.email);
 		output.password = malloc(29 * sizeof(char));
 		if(output.password == NULL){
 			logout(&output);
@@ -528,7 +553,7 @@ User login(char* username, char* password){
 			return output;
 		}
 		//Reads the notebooks from user settings and stores them
-		if(loadNotebooks(&output, user_settings) == 1){
+		if(loadNotebooks(&output, output.filepath) == 1){
 			fclose(user_settings);
 			return output;
 		}
@@ -557,6 +582,116 @@ void logout(User *user){
 }
 
 /*
+*Notebook Title may not exceed 64 characters
+*Checks if the notebook already exists. If not, conitnues to next steps.
+*Makes a notebook in memory
+*Appends the notebook to Notebook_List.txt
+*Creates a .txt file with the notebook's name as the name of the .txt file
+*Returns 1 on success and 0 on failure
+*/
+int makeNotebook(char* notebook_name, User* user){
+	if(strlen(notebook_name) > 64){
+		printf("Notebook name cannot exceed 64 characters");
+		return 0;
+	}
+	//Makes a directory path to the notebooks folder for checking if the notebook name is taken
+	char *notebook_path = malloc((strlen(user->filepath) + strlen("/Notebooks") + 1) * sizeof(char));
+	if(notebook_path == NULL){
+		printf("Memory allocation failed.\n");
+		return 0;
+	}
+	strcpy(notebook_path, user->filepath);
+	strcat(notebook_path, "/Notebooks/");
+	//Adds a .txt to the notebook name
+	char *new_notebook_name = malloc((strlen(notebook_name) + 5) * sizeof(char));
+	if(new_notebook_name == NULL){
+		printf("Memory allocation failed.\n");
+		free(notebook_path);
+		return 0;
+	}
+	strcpy(new_notebook_name, notebook_name);
+	strcat(new_notebook_name, ".txt");
+	//Returns an error if the notebook name already exists
+	if(directoryExists(new_notebook_name, notebook_path)){
+		printf("You cannot have two notebooks with the same name.\n");
+		free(notebook_path);
+		return 0;
+	}
+	
+	
+	//Appends the notebook and time of creation to Notebook_List.txt
+	//Creates the path to the notebook list
+	char *list_path = malloc((strlen(user->filepath) + strlen("/Notebook_List.txt") + 1) * sizeof(char));
+	if(list_path == NULL){
+		printf("Memory allocation failed.\n");
+		free(notebook_path);
+		return 0;
+	}
+	strcpy(list_path, user->filepath);
+	strcat(list_path, "/Notebook_List.txt");
+	FILE *list = fopen(list_path, "a");
+	if(list == NULL){
+		printf("banana");
+		perror("Failed to open file");
+		free(notebook_path);
+		free(list_path);
+		return 0;
+	}
+	
+	//Updates the user with new notebook
+	//Increases the number of notebooks
+	user->notebook_count++;
+	user->notebooks = realloc(user->notebooks, user->notebook_count * sizeof(Writing));
+	if(user->notebooks == NULL){
+		printf("Failed to make new notebook. Reloading from drive.\n");
+		loadNotebooks(user, user->filepath);
+		free(notebook_path);
+		free(list_path);
+		fclose(list);
+		return 0;
+	}
+	//Sets the notebook name in memory
+	user->notebooks[user->notebook_count-1].name = malloc((strlen(notebook_name) + 1) * sizeof(char));
+	if(user->notebooks[user->notebook_count-1].name == NULL){
+		printf("Failed to make new notebook. Reloading Notebooks from drive.\n");
+		loadNotebooks(user, user->filepath);
+		free(notebook_path);
+		free(list_path);
+		fclose(list);
+		return 0;
+	}
+	strcpy(user->notebooks[user->notebook_count-1].name, notebook_name);
+	//Sets the notebook creation time in memory
+	user->notebooks[user->notebook_count-1].time_created = time(NULL);
+	
+	//Appends the name and creation time to the notebook list, followed by an empty line
+	fprintf(list, "Name: %s\n", notebook_name);
+	fprintf(list, "Time Created: %ld\n", user->notebooks[user->notebook_count-1].time_created);
+	fprintf(list, "\n");
+	fclose(list);
+	free(list_path);
+	
+	//Creates the notebook text file to store notes
+	notebook_path = realloc(notebook_path, (strlen(notebook_path) + strlen(new_notebook_name) + 2) * sizeof(char));
+	if(notebook_path == NULL){
+		printf("Memory allocation failed.\n");
+		free(new_notebook_name);
+		return 0;
+	}
+	strcat(notebook_path, "/");
+	strcat(notebook_path, new_notebook_name);
+	FILE *notebook = fopen(notebook_path, "a");
+	free(new_notebook_name);
+	free(notebook_path);
+	if(notebook == NULL){
+		perror("Failed to create file");
+		return 0;
+	}
+	fclose(notebook);
+	printf("Notebook created successfully\n");
+	return 1;
+}
+/*
 *UNIMPLEMENTED
 *Loads the notebook names from the user settings 
 *Notebooks are put into a currently uncreated struct within users to efficiently store notes and such
@@ -564,6 +699,6 @@ void logout(User *user){
 *Returns 1 on success and 0 on failure
 *IMPORTANT: If read from directories, order will not be kept, so it is important to read from the user settings list instead
 */
-int loadNotebooks(User *user, FILE *settings){
+int loadNotebooks(User *user, char* filepath){
 	return 1;
 }
