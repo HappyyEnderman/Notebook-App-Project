@@ -24,6 +24,7 @@ typedef struct Writing{
 *filepaths to the user directory and the open notebook
 *arrays containing notes and notebooks
 *number of notes and notebooks
+*Note: notes_path, notes, and note_count are only set if a notebook is openned
 */
 typedef struct User{
 	char *email;
@@ -31,7 +32,7 @@ typedef struct User{
 	char *filepath;
 	Writing *notebooks;
 	int notebook_count;
-	char *notebook_path;
+	char *notes_path;
 	Writing *notes;
 	int note_count;
 } User;
@@ -52,7 +53,7 @@ typedef enum Position{
 int directoryExists(char* directory_name, char* current_directory);
 
 int checkUser(char* username, char* password);
-int makeUser(char* username, char* password);
+int makeUser(char* username, char* password, User* user);
 int deleteUser(User *user);
 void logout(User *user);
 User login(char* username, char* password);
@@ -67,7 +68,7 @@ int main(){
 	int running = 1;
 	int input = 0;
 	Position position = ENTRY;
-	User user = {0};
+	User user = (User){0}; // = {0} is used to ensure memory can be freed later without causing problems; pointers are set to NULL and ints are set to 0;
 	//User Interface for the system
 	printf("——Welcome to EasyNote——\n");
 	while(running){
@@ -92,7 +93,7 @@ int main(){
 					if(checkUser(email, password)){
 						user = login(email, password);
 						//Checks if login was successful befor moving to user level
-						if(strlen(user.email) != 0){
+						if(user.email != NULL){
 							position = USER;
 						}
 					}
@@ -107,11 +108,12 @@ int main(){
 					printf("Enter password: ");
 					scanf("%321s", password);
 					//Creates user account
-					makeUser(email, password);
+					if(makeUser(email, password, &user)){
+						//Changes interface level to user
+						position = USER;
+					}
 					free(email);
 					free(password);
-					//Changes interface level to user
-					position = USER;
 					break;
 				}
 				case 3:
@@ -323,7 +325,7 @@ int checkUser(char* username, char* password){
 *Email must not exist for this email already
 *returns 1 on success or 0 on failure
 */
-int makeUser(char* username, char* password){
+int makeUser(char* username, char* password, User* user){
 	if(checkUser(username, password)){
 		
 		//Checks if email is a repeat
@@ -383,7 +385,8 @@ int makeUser(char* username, char* password){
 			fprintf(user_settings, "Email: %s\n", username);
 			fprintf(user_settings, "Password: %s\n", password);
 			fclose(user_settings);
-			free(path);
+			//sets the user variables. Skips notebook related variables because 
+			*user = login(username, password);
 			return 1;
 		}
 		//Return an error if mkdir fails
@@ -471,7 +474,7 @@ int deleteUser(User *user){
 *Loads the notebooks associated with the user (NOT DONE YET)
 */
 User login(char* username, char* password){
-	User output;
+	User output = {0};
 	//Checks if the user account exists as a directory
 	if(directoryExists(username, "./Users") == 1){
 		//Create the path to the user's settings file and open it
@@ -548,10 +551,9 @@ void logout(User *user){
 	free(user->password);
 	free(user->filepath);
 	free(user->notebooks);
-	free(user->notebook_path);
+	free(user->notes_path);
 	free(user->notes);
-	user->notebook_count = 0;
-	user->note_count = 0;
+	*user = (User){0};
 }
 
 /*
