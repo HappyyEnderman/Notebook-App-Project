@@ -63,6 +63,10 @@ void logout(User *user);
 int makeNotebook(char* notebook_name, User* user);
 int loadNotebooks(User *user, char *filepath);
 int makeNote(char* note_title, char* content, User* user);
+int loadNotes(User *user, const char *notebook_filename);
+int saveNotebook(User *user);
+int editNote(User *user, int index, const char *new_title, const char *new_content);
+int deleteNote(User *user, int index);
 
 //Main function
 int main(){
@@ -156,10 +160,11 @@ int main(){
 						printf("%d. %s (created %ld)\n", i+1, user.notebooks[i].name, (long)user.notebooks[i].time_created);
 					}
 					int pick;
-					printf("Enter number of notebook to open: ");
+					printf("Enter the number of the notebook you want to open: ");
 					scanf("%d", &pick);
-					if(pick < 1 || pick > user.notebook_count){
-						printf("Invalid selection\n"); break;
+					if (pick < 1 || pick > user.notebook_count){
+						printf("Invalid selection\n"); 
+						break;
 					}
 					// build notebook filename path
 					char notebook_file[1024];
@@ -971,7 +976,9 @@ int loadNotes(User *user, const char *notebook_filename){
     }
 
     free(content_buf);
-    if(line) free(line);
+    if(line) {
+		free(line);
+	}
     fclose(f);
 
     // Store the path for notes.
