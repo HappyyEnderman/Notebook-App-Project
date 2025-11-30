@@ -236,10 +236,12 @@ int main(){
 						printf("Enter note content. Enter a single '.' on a line to finish:\n");
 
 						getchar();
-
+						// An infinite loop that reads line from the user until they enter "."
 						while (1) {
 							char line[512];
-							if (!fgets(line, sizeof(line), stdin)) break;
+							if (!fgets(line, sizeof(line), stdin)) {
+								break;
+							}
 							if (strcmp(line, ".\n") == 0 || strcmp(line, ".\r\n") == 0 || strcmp(line, ".") == 0)
 								break;
 
@@ -733,6 +735,7 @@ int makeNotebook(char* notebook_name, User* user){
 		fclose(list);
 		return 0;
 	}
+	
 	//Sets the notebook name in memory
 	user->notebooks[user->notebook_count-1].name = malloc((strlen(notebook_name) + 1) * sizeof(char));
 	if(user->notebooks[user->notebook_count-1].name == NULL){
@@ -783,7 +786,8 @@ int makeNotebook(char* notebook_name, User* user){
 *IMPORTANT: If read from directories, order will not be kept, so it is important to read from the user settings list instead
 */
 int loadNotebooks(User *user, char* filepath){
-    if(user == NULL || filepath == NULL) {
+	// If the notebook doesn't exist, return 0.
+    if (user == NULL || filepath == NULL) {
 		return 0;
 	}
 
@@ -806,9 +810,10 @@ int loadNotebooks(User *user, char* filepath){
     }
 
     // Clear notebooks that are currently loaded.
-    for(int i = 0; i < user->notebook_count; i++){
+    for(int i = 0; i < user->notebook_count; i++) {
         free(user->notebooks[i].name);
     }
+	
     free(user->notebooks);
     user->notebooks = NULL;
     user->notebook_count = 0;
@@ -823,14 +828,22 @@ int loadNotebooks(User *user, char* filepath){
 
 	// Read the notebook list file.
     while((read = getline(&line, &len, f)) != -1){
-        if(strncmp(line, "Name:", 5) == 0){
+        if(strncmp(line, "Name:", 5) == 0) {
             // If the name is found, parse the notebook name.
             const char *p = line + 5;
-            while(*p == ' ') p++;
-            strncpy(name_buffer, p, sizeof(name_buffer)-1);
+			
+            while(*p == ' ') { 
+				p++;
+			}
+			
+            strncpy(name_buffer, p, sizeof(name_buffer) - 1);
             name_buffer[sizeof(name_buffer)-1] = '\0';
+			
             // Read the time the notebook was created. If there is no time, then the time is sent to the current time.
-            if((read = getline(&line, &len, f)) == -1) break;
+            if((read = getline(&line, &len, f)) == -1) {
+				break;
+			}
+			
             if(strncmp(line, "Time Created:", 13) == 0){
                 const char *tptr = line + 13;
                 while(*tptr == ' ') tptr++;
@@ -838,16 +851,19 @@ int loadNotebooks(User *user, char* filepath){
             } else {
                 time_value = time(NULL);
             }
+			
             // Store the notebook in memory.
             user->notebook_count++;
             user->notebooks = realloc(user->notebooks, user->notebook_count * sizeof(Writing));
+			
             if(!user->notebooks){
-                rror("Failed to reallocate.");
+                perror("Failed to reallocate.");
                 fclose(f);
                 if(line) free(line);
                 free(list_path);
                 return 0;
             }
+			
             int index = user->notebook_count - 1;
             user->notebooks[index].time_created = (time_t)time_value;
             user->notebooks[index].name = malloc(strlen(name_buffer)+1);
@@ -883,8 +899,8 @@ int loadNotes(User *user, const char *notebook_filename){
     }
 
     // Clear existing notes.
-    if(user->notes){
-        for(int i=0;i<user->note_count;i++){
+    if (user->notes) {
+        for(int i = 0; i < user->note_count; i++){
             free(user->notes[i].name);
             free(user->notes[i].content);
         }
@@ -910,7 +926,7 @@ int loadNotes(User *user, const char *notebook_filename){
     while((read = getline(&line, &len, f)) != -1){
 		// Scan to see if there are any new notes.
         if(strncmp(line, "Title:", 6) == 0){
-			chomp(line);
+			chomp(line); // This is a function used to remove trailing newlines.
             const char *p = line + 6;
             while(*p == ' ') {
 				p++;
@@ -957,6 +973,7 @@ int loadNotes(User *user, const char *notebook_filename){
                         return 0;
                     }
                 }
+				// Add a new line to each line.
                 memcpy(content_buf + content_len, line, line_len);
                 content_len += line_len;
                 content_buf[content_len++] = '\n';
@@ -1050,11 +1067,11 @@ int editNote(User *user, int index, const char *new_title, const char *new_conte
         return 0;
     }
 
-    // Edit the title and content.
+    // Edit the title.
     free(user->notes[index].name);
     user->notes[index].name = malloc(strlen(new_title)+1);
     strcpy(user->notes[index].name, new_title);
-
+	// Edit the content.
     free(user->notes[index].content);
     user->notes[index].content = malloc(strlen(new_content)+1);
     strcpy(user->notes[index].content, new_content);
@@ -1066,7 +1083,7 @@ int deleteNote(User *user, int index){
     if(!user || index < 0 || index >= user->note_count) {
         return 0;
     }
-
+	// Free the notes memory
     free(user->notes[index].name);
     free(user->notes[index].content);
 
