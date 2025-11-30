@@ -15,8 +15,9 @@
 *Time_created is an integer time that can easily be compared
 */
 typedef struct Writing{
-	time_t time_created;
-	char* name;
+    time_t time_created;
+    char* name;      
+    char* content;   
 } Writing;
 
 /*Structure to store the active user
@@ -27,17 +28,15 @@ typedef struct Writing{
 *Note: notes_path, notes, and note_count are only set if a notebook is openned
 */
 typedef struct User{
-	char *email;
-	char *password;
-	char *filepath;
-	Writing *notebooks;
-	int notebook_count;
-	char *notes_path;
-	Writing *notes;
-	int note_count;
+    char *email;
+    char *password;
+    char *filepath;
+    Writing *notebooks;
+    int notebook_count;
+    char *notes_path;
+    Writing *notes;
+    int note_count;
 } User;
-
-
 
 
 //Enums
@@ -63,11 +62,11 @@ void logout(User *user);
 //Notebook Management Functions
 int makeNotebook(char* notebook_name, User* user);
 int loadNotebooks(User *user, char *filepath);
-void makeNote(char* note);
+int makeNote(char* note_title, char* content, User* user);
 
 //Main function
 int main(){
-	//variables to control the interface
+	// Variables to control the interface
 	int running = 1;
 	int input = 0;
 	Position position = ENTRY;
@@ -76,7 +75,7 @@ int main(){
 	printf("——Welcome to EasyNote——\n");
 	while(running){
 		switch(position){
-			//Login Page Menu
+			// LOGIN MENU
 			case ENTRY:
 			printf("Please select a menu option:\n");
 			printf("1. Log in\n");
@@ -128,13 +127,15 @@ int main(){
 			}
 			break;
 			
-			//Notebooks and Account Deletion Menu
+			// USER MENU
 			case USER:
 				printf("Please select a menu option:\n");
-				printf("1. Make Notebook\n");
-				printf("2. Logout\n");
-				printf("3. Delete Account\n");
+				printf("1. Create Notebook\n");
+				printf("2. Load Notebook\n");
+				printf("3. Logout\n");
+				printf("4. Delete Account\n");
 				scanf("%d", &input);
+				
 				switch(input){
 				case 1:{
 					//Scans notebook name
@@ -145,11 +146,36 @@ int main(){
 					free(notebook_name);
 					break;
 				}
-				case 2:
+				case 2: {
+					if(user.notebook_count == 0){
+						printf("No notebooks available.\n");
+						break;
+					}
+					printf("Your notebooks:\n");
+					for(int i=0;i<user.notebook_count;i++){
+						printf("%d. %s (created %ld)\n", i+1, user.notebooks[i].name, (long)user.notebooks[i].time_created);
+					}
+					int pick;
+					printf("Enter number of notebook to open: ");
+					scanf("%d", &pick);
+					if(pick < 1 || pick > user.notebook_count){
+						printf("Invalid selection\n"); break;
+					}
+					// build notebook filename path
+					char notebook_file[1024];
+					snprintf(notebook_file, sizeof(notebook_file), "%s/Notebooks/%s.txt", user.filepath, user.notebooks[pick-1].name);
+					if(!loadNotes(&user, notebook_file)){
+						printf("Failed to load notebook\n");
+						break;
+					}
+					position = NOTEBOOKS;
+					break;
+				}
+				case 3:
 					logout(&user);
 					position = ENTRY;
 					break;
-				case 3:{
+				case 4:{
 					//Confirms account deletion
 					char confirmation;
 					printf("Are you sure you want to delete your account (Y/N): ");
@@ -175,12 +201,64 @@ int main(){
 			}
 				break;
 				
-			//Create and Edit Notes Menu
+			// NOTEBOOK MENU
 			case NOTEBOOKS:
-				printf("Under Construction: Returning to login screen\n");
-				position = ENTRY;
+				printf("\nNotebook Menu\n");
+				printf("1. View Notes\n");
+				printf("2. Create Note\n");
+				printf("3. Exit Notebook\n");
+				scanf("%d", &input);
+
+				switch(input){
+					case 1:
+						if(user.note_count == 0){
+							printf("No notes available. Create a note to view notes.\n");
+						} else {
+							for(int i=0;i<user.note_count;i++){
+								printf("%d. %s\n", i+1, user.notes[i].name);
+							}
+						}
+						break;
+
+					case 2: {
+						char title[256];
+						char content[5000];
+						content[0] = '\0';
+
+						printf("Enter note title: ");
+						scanf("%255s", title);
+
+						printf("Enter note content. Enter a single '.' on a line to finish:\n");
+
+						getchar();
+
+						while (1) {
+							char line[512];
+							if (!fgets(line, sizeof(line), stdin)) break;
+							if (strcmp(line, ".\n") == 0 || strcmp(line, ".\r\n") == 0 || strcmp(line, ".") == 0)
+								break;
+
+							strcat(content, line);
+						}
+
+						if(!makeNote(title, content, &user)){
+							printf("Failed to make note.\n");
+						}
+						break;
+					}
+
+					case 3:
+						free(user.notes);
+						user.notes = NULL;
+						user.note_count = 0;
+						position = USER;
+						break;
+
+					default:
+						printf("Invalid input.\n");
+				}
 				break;
-				
+
 			//This should be impossible to reach, but protects against edge cases with the user position
 			default:
 				printf("An unknown error has occurred. Returning to login screen. All unsaved progress will be lost.\n");
@@ -274,7 +352,7 @@ int checkUser(char* username, char* password){
 		big_flag = 0;
 	}
 			
-	//checks if the password contains a lowercase letter
+	//Checks if the password contains a lowercase letter
 	small_flag = 0;
 	for(int i = 0; i < password_length; i++){
 		if(islower((unsigned char)password[i])){
@@ -334,7 +412,7 @@ int checkUser(char* username, char* password){
 		printf("Password must contain at least one special character.\n");
 		big_flag = 0;
 	}
-	
+
 	//Checks password length
 	if(password_length < 7 || password_length > 28){
 		printf("Password must be between 7 and 28 characters.\n");
@@ -353,7 +431,7 @@ int checkUser(char* username, char* password){
 int makeUser(char* username, char* password, User* user){
 	if(checkUser(username, password)){
 		
-		//Checks if email is a repeat
+	//Checks if email is a repeat
 		int flag = directoryExists(username, "./Users");
 		if(flag == -1){
 			printf("Failed to check existing users. Please try again.\n");
@@ -500,7 +578,7 @@ int deleteUser(User *user){
 */
 User login(char* username, char* password){
 	User output = {0};
-	//Checks if the user account exists as a directory
+	
 	if(directoryExists(username, "./Users") == 1){
 		//Create the path to the user's settings file and open it
 		char *filepath = malloc((27 + strlen(username))*sizeof(char));
@@ -528,7 +606,7 @@ User login(char* username, char* password){
 		
 		//Reads the username and password of the account
 		/*IMPORTANT: The space at the start of the inputs from fscanf allows the program to skip whitespace.
-		Without it, the newline would be read immediately when checking password, giving it no value.*/
+				Without it, the newline would be read immediately when checking password, giving it no value.*/
 		output.email = malloc(129 * sizeof(char));
 		if(output.email == NULL){
 			logout(&output);
@@ -700,5 +778,304 @@ int makeNotebook(char* notebook_name, User* user){
 *IMPORTANT: If read from directories, order will not be kept, so it is important to read from the user settings list instead
 */
 int loadNotebooks(User *user, char* filepath){
-	return 1;
+    if(user == NULL || filepath == NULL) {
+		return 0;
+	}
+
+    // Create the path to notebook list.
+    char *list_path = malloc(strlen(filepath) + strlen("/Notebook_List.txt") + 1);
+    if(!list_path) {
+		return 0;
+	}
+    strcpy(list_path, filepath);
+    strcat(list_path, "/Notebook_List.txt");
+
+	// Open notebook list.
+    FILE *f = fopen(list_path, "r");
+    if(!f){
+        // If the file for the notebook doesn't exist, then it's empty.
+        user->notebook_count = 0;
+        user->notebooks = NULL;
+        free(list_path);
+        return 1;
+    }
+
+    // Clear notebooks that are currently loaded.
+    for(int i = 0; i < user->notebook_count; i++){
+        free(user->notebooks[i].name);
+    }
+    free(user->notebooks);
+    user->notebooks = NULL;
+    user->notebook_count = 0;
+	
+	// Set up variables for reading the notebook list.
+    char *line = NULL;
+    size_t len = 0;
+    size_t read;
+
+    char name_buffer[256] = {0};
+    long time_value = 0;
+
+	// Read the notebook list file.
+    while((read = getline(&line, &len, f)) != -1){
+        if(strncmp(line, "Name:", 5) == 0){
+            // If the name is found, parse the notebook name.
+            const char *p = line + 5;
+            while(*p == ' ') p++;
+            strncpy(name_buffer, p, sizeof(name_buffer)-1);
+            name_buffer[sizeof(name_buffer)-1] = '\0';
+            // Read the time the notebook was created. If there is no time, then the time is sent to the current time.
+            if((read = getline(&line, &len, f)) == -1) break;
+            if(strncmp(line, "Time Created:", 13) == 0){
+                const char *tptr = line + 13;
+                while(*tptr == ' ') tptr++;
+                time_value = atol(tptr);
+            } else {
+                time_value = time(NULL);
+            }
+            // Store the notebook in memory.
+            user->notebook_count++;
+            user->notebooks = realloc(user->notebooks, user->notebook_count * sizeof(Writing));
+            if(!user->notebooks){
+                rror("Failed to reallocate.");
+                fclose(f);
+                if(line) free(line);
+                free(list_path);
+                return 0;
+            }
+            int index = user->notebook_count - 1;
+            user->notebooks[index].time_created = (time_t)time_value;
+            user->notebooks[index].name = malloc(strlen(name_buffer)+1);
+            strcpy(user->notebooks[index].name, name_buffer);
+            user->notebooks[index].content = NULL; // The content of a notebook is set to null because only notes will have content.
+        }
+    }
+
+    if(line) {
+		free(line);
+	}
+	
+    fclose(f);
+    free(list_path);
+    return 1;
+}
+
+int loadNotes(User *user, const char *notebook_filename){
+    if(!user || !notebook_filename) {
+		return 0;
+	}
+	// Open the notebook file.
+    FILE *f = fopen(notebook_filename, "r");
+    if(!f) {
+        // If there is no notebook file, then the notebook is empty.
+        user->note_count = 0;
+        user->notes = NULL;
+        // Create the path for notes.
+        free(user->notes_path);
+        user->notes_path = malloc(strlen(notebook_filename) + 1);
+        strcpy(user->notes_path, notebook_filename);
+        return 1;
+    }
+
+    // Clear existing notes.
+    if(user->notes){
+        for(int i=0;i<user->note_count;i++){
+            free(user->notes[i].name);
+            free(user->notes[i].content);
+        }
+        free(user->notes);
+        user->notes = NULL;
+        user->note_count = 0;
+    }
+
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+
+    char title[257];
+    long t_created = 0;
+    // Create a temporary buffer that stores notes content.
+    size_t content_buf_size = 4096;
+    char *content_buf = malloc(content_buf_size);
+    if(!content_buf){
+        fclose(f);
+        return 0;
+    }
+
+    while((read = getline(&line, &len, f)) != -1){
+		// Scan to see if there are any new notes.
+        if(strncmp(line, "Title:", 6) == 0){
+			chomp(line);
+            const char *p = line + 6;
+            while(*p == ' ') {
+				p++;
+			}
+            strncpy(title, p, sizeof(title)-1);
+            title[sizeof(title)-1] = '\0';
+
+            // Read the time created.
+            if((read = getline(&line, &len, f)) == -1) {
+				break;
+			}
+            chomp(line);
+            if(strncmp(line, "Time Created:", 13) == 0){
+                const char *tptr = line + 13;
+                while(*tptr == ' ') + {
+					tptr++;
+				}
+                t_created = atol(tptr);
+            } else {
+				t_created = time(NULL);
+			}
+
+            // Parse the note content.
+            if((read = getline(&line, &len, f)) == -1) break;
+            chomp(line);
+            // Read the content of the note until it reaches "ENDNOTE".
+            content_buf[0] = '\0';
+            size_t content_len = 0;
+            while((read = getline(&line, &len, f)) != -1){
+                chomp(line);
+                if(strcmp(line, "ENDNOTE") == 0) {
+					break;
+				}
+                size_t line_len = strlen(line);
+				// This line expands the buffer if necessary.
+                if(content_len + line_len + 2 > content_buf_size){
+                    content_buf_size *= 2;
+                    content_buf = realloc(content_buf, content_buf_size);
+                    if(!content_buf){
+                        fclose(f);
+                        if(line) {
+							free(line);
+						}
+                        return 0;
+                    }
+                }
+                memcpy(content_buf + content_len, line, line_len);
+                content_len += line_len;
+                content_buf[content_len++] = '\n';
+                content_buf[content_len] = '\0';
+            }
+
+            // Store the note in the memory.
+            user->note_count++;
+            user->notes = realloc(user->notes, user->note_count * sizeof(Writing));
+            int idx = user->note_count - 1;
+            user->notes[idx].time_created = (time_t)t_created;
+            user->notes[idx].name = malloc(strlen(title) + 1);
+            strcpy(user->notes[idx].name, title);
+            user->notes[idx].content = malloc(content_len + 1);
+            memcpy(user->notes[idx].content, content_buf, content_len+1);
+        }
+    }
+
+    free(content_buf);
+    if(line) free(line);
+    fclose(f);
+
+    // Store the path for notes.
+    free(user->notes_path);
+    user->notes_path = malloc(strlen(notebook_filename) + 1);
+    strcpy(user->notes_path, notebook_filename);
+
+    return 1;
+}
+
+int saveNotebook(User *user){
+    if(!user || !user->notes_path) return 0;
+    FILE *f = fopen(user->notes_path, "w");
+    if(!f) return 0;
+    for(int i=0;i<user->note_count;i++){
+		// All of the code for saving the notes content.
+        fprintf(f, "Title: %s\n", user->notes[i].name ? user->notes[i].name : "");
+        fprintf(f, "Time Created: %ld\n", (long)user->notes[i].time_created);
+        fprintf(f, "Content:\n");
+        if(user->notes[i].content) fputs(user->notes[i].content, f);
+        if(user->notes[i].content && user->notes[i].content[strlen(user->notes[i].content)-1] != '\n') fputc('\n', f);
+        fprintf(f, "ENDNOTE\n");
+    }
+    fclose(f);
+    return 1;
+}
+
+int makeNote(char* note_title, char* content, User* user){
+    // Check if it's possible to make the note.
+    if(!user || !user->notes_path || !note_title) {
+        return 0;
+    }
+
+    // Add the note to memory.
+    user->note_count++;
+    user->notes = realloc(user->notes, user->note_count * sizeof(Writing));
+    if(!user->notes) {
+        return 0;
+    }
+
+    int idx = user->note_count - 1;
+
+    // Allocate and copy the title.
+    user->notes[idx].name = malloc(strlen(note_title) + 1);
+    strcpy(user->notes[idx].name, note_title);
+
+    // Set creation time.
+    user->notes[idx].time_created = time(NULL);
+
+    // Allocate and copy content.
+    if(content) {
+        user->notes[idx].content = malloc(strlen(content) + 1);
+        strcpy(user->notes[idx].content, content);
+    } else {
+        user->notes[idx].content = malloc(1);
+        user->notes[idx].content[0] = '\0';
+    }
+
+    // Save notebook after adding note.
+    if(!saveNotebook(user)) {
+        return 0;
+    }
+
+    return 1;
+}
+
+int editNote(User *user, int index, const char *new_title, const char *new_content){
+    if(!user || index < 0 || index >= user->note_count) {
+        return 0;
+    }
+
+    // Edit the title and content.
+    free(user->notes[index].name);
+    user->notes[index].name = malloc(strlen(new_title)+1);
+    strcpy(user->notes[index].name, new_title);
+
+    free(user->notes[index].content);
+    user->notes[index].content = malloc(strlen(new_content)+1);
+    strcpy(user->notes[index].content, new_content);
+
+    return saveNotebook(user);
+}
+
+int deleteNote(User *user, int index){
+    if(!user || index < 0 || index >= user->note_count) {
+        return 0;
+    }
+
+    free(user->notes[index].name);
+    free(user->notes[index].content);
+
+    // Reposition the remaining notes.
+    for(int i = index; i < user->note_count - 1; i++){
+        user->notes[i] = user->notes[i+1];
+    }
+
+    // Update count.
+    user->note_count--;
+    if(user->note_count == 0){
+        free(user->notes);
+        user->notes = NULL;
+    } else {
+        user->notes = realloc(user->notes, user->note_count * sizeof(Writing));
+    }
+
+    return saveNotebook(user);
 }
