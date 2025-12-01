@@ -46,7 +46,6 @@ typedef enum Position{
 	USER,
 	NOTEBOOKS
 }Position;
-//Global Variables
 
 //Prototypes
 //General Functions
@@ -72,6 +71,13 @@ int deleteNote(User *user, int index);
 //Sorting Functions
 void timeSortNotebook(User *user, int dirrection);
 void alphaSortNotebook(User *user, int dirrection);
+void swapNotebook(User *user, int note1, int note2);
+void shiftNotebook(User *user, int note_pos, int new_pos);
+
+void timeSortNote(User *user, int dirrection);
+void alphaSortNote(User *user, int dirrection);
+void swapNote(User *user, int note1, int note2);
+void shiftNote(User *user, int note_pos, int new_pos);
 
 //Main function
 int main(){
@@ -198,6 +204,12 @@ int main(){
 					position = ENTRY;
 					break;
 				case 4:{
+					//Ensures there are notebooks to sort
+					if(user.notebook_count == 0){
+						printf("No notebooks available.\n");
+						break;
+					}
+					//Prompts for sort type
 					printf("Select sort type:\n");
 					printf("1. Time\n");
 					printf("2. Alpahabetical\n");
@@ -206,6 +218,7 @@ int main(){
 					int sort_type;
 					scanf(" %d", &sort_type);
 					switch(sort_type){
+						//Time Sort
 						case 1:{
 							printf("Enter 1 for ascending or any other value for descending: ");
 							int sort_dirrection;
@@ -217,7 +230,7 @@ int main(){
 							
 							break;
 						}
-						
+						//Alphabetical Sort
 						case 2:{
 							printf("Enter 1 for ascending or any other value for descending: ");
 							int sort_dirrection;
@@ -229,14 +242,73 @@ int main(){
 							
 							break;
 						}
-						
-						case 3:
-						
+						//Swap
+						case 3:{
+							//Prints the notebooks for user reference
+							for(int i=0;i<user.notebook_count;i++){
+								printf("%d. %s ", i+1, user.notebooks[i].name/*, (long)user.notebooks[i].time_created*/);
+								struct tm *item_t = localtime(&user.notebooks[i].time_created);
+								//prints the time of day created (hours stored 0-23)
+								if(item_t->tm_hour < 12){
+									printf("(Created: %d:%02d am", item_t->tm_hour + 1, item_t->tm_min);
+								}
+								else{
+									printf("(Created: %d:%02d pm", item_t->tm_hour - 12, item_t->tm_min);
+								}
+								//Adds the date in mm/dd/yyyy
+								printf("  %02d/%02d/%04d)\n", item_t->tm_mon + 1, item_t->tm_mday, item_t->tm_year + 1900);
+
+							}
+							//Prompts user for input
+							int note1;
+							int note2;
+							printf("Enter the number of the first notebook you want to swap: ");
+							scanf(" %d", &note1);
+							if(note1 < 1 || note1 > user.notebook_count){
+								printf("Invalid Input\n");
+							}
+							printf("Enter the number of the second notebook you want to swap: ");
+							scanf(" %d", &note2);
+							if(note2 < 1 || note2 > user.notebook_count){
+								printf("Invalid Input\n");
+							}
+							swapNotebook(&user, note1 - 1, note2 - 1);
 							break;
-						
-						case 4:
-						
+						}
+						//Shift
+						case 4:{
+							//Prints the notebooks for user reference
+							for(int i=0;i<user.notebook_count;i++){
+								printf("%d. %s ", i+1, user.notebooks[i].name/*, (long)user.notebooks[i].time_created*/);
+								struct tm *item_t = localtime(&user.notebooks[i].time_created);
+								//prints the time of day created (hours stored 0-23)
+								if(item_t->tm_hour < 12){
+									printf("(Created: %d:%02d am", item_t->tm_hour + 1, item_t->tm_min);
+								}
+								else{
+									printf("(Created: %d:%02d pm", item_t->tm_hour - 12, item_t->tm_min);
+								}
+								//Adds the date in mm/dd/yyyy
+								printf("  %02d/%02d/%04d)\n", item_t->tm_mon + 1, item_t->tm_mday, item_t->tm_year + 1900);
+
+							}
+							//Prompts user for input
+							int note_pos;
+							int new_pos;
+							printf("Enter the number of the notebook you want to shift: ");
+							scanf(" %d", &note_pos);
+							if(note_pos < 1 || note_pos > user.notebook_count){
+								printf("Invalid Input\n");
+							}
+							printf("Enter the number of the position you want the notebook to shift to: ");
+							scanf(" %d", &new_pos);
+							if(new_pos < 1 || new_pos > user.notebook_count){
+								printf("Invalid Input\n");
+							}
+							shiftNotebook(&user, note_pos - 1, new_pos - 1);
 							break;
+						}
+						
 						
 						default:
 							printf("Invalid input.\n");
@@ -276,6 +348,7 @@ int main(){
 				printf("1. View Notes\n");
 				printf("2. Create Note\n");
 				printf("3. Exit Notebook\n");
+				printf("4. Sort Notes\n");
 				
 				scanf("%d", &input);
 
@@ -326,6 +399,110 @@ int main(){
 						user.note_count = 0;
 						position = USER;
 						break;
+						
+					case 4:{
+						//Ensures there are notes to sort
+						if(user.note_count == 0){
+							printf("No notes available.\n");
+							break;
+						}
+						//Prompts for sort type
+						printf("Select sort type:\n");
+						printf("1. Time\n");
+						printf("2. Alpahabetical\n");
+						printf("3. Swap\n");
+						printf("4. Shift\n");
+						int sort_type;
+						scanf(" %d", &sort_type);
+						switch(sort_type){
+							//Time Sort
+							case 1:{
+								printf("Enter 1 for ascending or any other value for descending: ");
+								int sort_dirrection;
+								scanf(" %d", &sort_dirrection);
+								if(sort_dirrection != 1){
+									sort_dirrection = -1;
+								}
+								timeSortNote(&user, sort_dirrection);
+								
+								break;
+							}
+							//Alphabetical Sort
+							case 2:{
+								printf("Enter 1 for ascending or any other value for descending: ");
+								int sort_dirrection;
+								scanf(" %d", &sort_dirrection);
+								if(sort_dirrection != 1){
+									sort_dirrection = -1;
+								}
+								alphaSortNote(&user, sort_dirrection);
+								
+								break;
+							}
+							//Swap
+							case 3:{
+								//Prints the notebooks for user reference
+								if(user.note_count == 0){
+									printf("No notes available. Create a note to view notes.\n");
+								} else {
+									for(int i=0;i<user.note_count;i++){
+										printf("%d. %s\n", i+1, user.notes[i].name);
+										printf("%s\n", user.notes[i].content);
+									}
+								}
+								//Prompts user for input
+								int note1;
+								int note2;
+								printf("Enter the number of the first note you want to swap: ");
+								scanf(" %d", &note1);
+								if(note1 < 1 || note1 > user.note_count){
+									printf("Invalid Input\n");
+								}
+								printf("Enter the number of the second note you want to swap: ");
+								scanf(" %d", &note2);
+								if(note2 < 1 || note2 > user.note_count){
+									printf("Invalid Input\n");
+								}
+								swapNote(&user, note1 - 1, note2 - 1);
+								break;
+							}
+							//Shift
+							case 4:{
+								//Prints the notebooks for user reference
+								if(user.note_count == 0){
+									printf("No notes available. Create a note to view notes.\n");
+								} else {
+									for(int i=0;i<user.note_count;i++){
+										printf("%d. %s\n", i+1, user.notes[i].name);
+										printf("%s\n", user.notes[i].content);
+									}
+								}
+								//Prompts user for input
+								int note_pos;
+								int new_pos;
+								printf("Enter the number of the note you want to shift: ");
+								scanf(" %d", &note_pos);
+								if(note_pos < 1 || note_pos > user.note_count){
+									printf("Invalid Input\n");
+								}
+								printf("Enter the number of the position you want the note to shift to: ");
+								scanf(" %d", &new_pos);
+								if(new_pos < 1 || new_pos > user.note_count){
+									printf("Invalid Input\n");
+								}
+								shiftNote(&user, note_pos - 1, new_pos - 1);
+								break;
+							}
+							
+							
+							default:
+								printf("Invalid input.\n");
+								break;
+							}
+							break;
+					}
+						
+					
 						
 
 					default:
@@ -646,6 +823,17 @@ int deleteUser(User *user){
 		free(settings_path);
 	}
 	free(settings_path);
+	
+	//Delete the Notebook list
+	char *notebook_list_path = malloc((strlen(user->filepath) + strlen("/Notebook_List.txt") + 1) * sizeof(char));
+	strcpy(notebook_list_path, user->filepath);
+	strcat(notebook_list_path, "/Notebook_List.txt");
+	if(remove(notebook_list_path) != 0){
+		perror("Failed to remove user settings");
+		free(notebook_list_path);
+	}
+	free(notebook_list_path);
+	
 	//Deletes the user path
 	if(rmdir(user->filepath) != 0){
 		perror("Failed to remove user directory");
@@ -1200,24 +1388,10 @@ int deleteNote(User *user, int index){
 }
 
 
-/*
-Need list to sort, and it's length
-Take the time of each writing
-Create a temporary spot to put an element
-swap the position of the elements
 
-
-Should start by looking at all elements, and skip past one earlier element each time
-Should factor direction into matter by multiplying the result. If one would have been higher, negative makes it lower instead
-
-Doesn't need to look at the lest element, as that should naturally end as the lowest. Testing needed.
-
-
-
-
-
-*/
-
+//Sorts notebooks by the time they were created
+//Direction is 1 for ascending, or -1 for descending
+//Any positive or negative value may work, but it is not done limit overflow
 void timeSortNotebook(User *user, int dirrection){
 	//Controlls the starting position
 	for(int i = 0; i < user->notebook_count - 1; i++){
@@ -1225,13 +1399,10 @@ void timeSortNotebook(User *user, int dirrection){
 		Writing temp = user->notebooks[i];
 		//Looks through each value
 		for(int j = i + 1; j < user->notebook_count; j++){
-			
 			//Compares the time of the current selected and the next element of the array.
 			if(user->notebooks[current].time_created * dirrection > user->notebooks[j].time_created * dirrection){
 				current = j;
 			}
-			
-			
 		}
 		user->notebooks[i] = user->notebooks[current];
 		user->notebooks[current] = temp;
@@ -1240,7 +1411,10 @@ void timeSortNotebook(User *user, int dirrection){
 }
 
 
-
+//Sorts notebooks by alphabetical order
+//This doesn't account for capitalization, so lowercase is seen as a higher value than uppercase
+//Direction is 1 for ascending, or -1 for descending
+//Any positive or negative value may work, but it is not done limit overflow
 void alphaSortNotebook(User *user, int dirrection){
 	//Controlls the starting position
 	for(int i = 0; i < user->notebook_count - 1; i++){
@@ -1248,13 +1422,10 @@ void alphaSortNotebook(User *user, int dirrection){
 		Writing temp = user->notebooks[i];
 		//Looks through each value
 		for(int j = i + 1; j < user->notebook_count; j++){
-			
 			//Compares the time of the current selected and the next element of the array.
-			if(strcmp(user->notebooks[current].name, user->notebooks[j].name) * dirrection < 0){
+			if(strcmp(user->notebooks[current].name, user->notebooks[j].name) * dirrection > 0){
 				current = j;
 			}
-			
-			
 		}
 		user->notebooks[i] = user->notebooks[current];
 		user->notebooks[current] = temp;
@@ -1263,11 +1434,123 @@ void alphaSortNotebook(User *user, int dirrection){
 }
 
 
-/*
-void swapNote
+
+//Swaps the position of 2 notes within the user account
+void swapNotebook(User *user, int note1, int note2){
+	Writing temp = user->notebooks[note1];
+	user->notebooks[note1] = user->notebooks[note2];
+	user->notebooks[note2] = temp;
+	saveUser(user);
+}
+
+
+//Moves a note to the desired position, shifting all other notes as needed
+void shiftNotebook(User *user, int note_pos, int new_pos){
+	Writing temp = user->notebooks[note_pos];
+	//If the element if moving left, all elements from the desired position to the original position shift right
+	if(note_pos > new_pos){
+		for(int i = note_pos; i > new_pos; i--){
+			user->notebooks[i] = user->notebooks[i-1];
+		}
+	}
+	//If the element if moving right, all elements from the desired position to the original position shift left
+	//No case is given for note_pos = new_pos because the for loop is skipped, giving the function no impact other than brief runtime
+	else{
+		for(int i = note_pos; i < new_pos; i++){
+			user->notebooks[i] = user->notebooks[i+1];
+		}
+	}
+	//Places the original note in desired position
+	user->notebooks[new_pos] = temp;
+	saveUser(user);
+}
 
 
 
-void shiftNote
+
+
+
+//Sorts notes by the time they were created
+//Direction is 1 for ascending, or -1 for descending
+//Any positive or negative value may work, but it is not done limit overflow
+void timeSortNote(User *user, int dirrection){
+	//Controlls the starting position
+	for(int i = 0; i < user->note_count - 1; i++){
+		int current = i; // stores the currently held position. This may be newest or oldest depending on direction.
+		Writing temp = user->notes[i];
+		//Looks through each value
+		for(int j = i + 1; j < user->note_count; j++){
+			//Compares the time of the current selected and the next element of the array.
+			if(user->notes[current].time_created * dirrection > user->notes[j].time_created * dirrection){
+				current = j;
+			}
+		}
+		user->notes[i] = user->notes[current];
+		user->notes[current] = temp;
+	}
+	saveNotebook(user);
+}
+
+
+//Sorts notes by alphabetical order
+//This doesn't account for capitalization, so lowercase is seen as a higher value than uppercase
+//Direction is 1 for ascending, or -1 for descending
+//Any positive or negative value may work, but it is not done limit overflow
+void alphaSortNote(User *user, int dirrection){
+	//Controlls the starting position
+	for(int i = 0; i < user->note_count - 1; i++){
+		int current = i; // stores the currently held position. This may be newest or oldest depending on direction.
+		Writing temp = user->notes[i];
+		//Looks through each value
+		for(int j = i + 1; j < user->note_count; j++){
+			//Compares the time of the current selected and the next element of the array.
+			if(strcmp(user->notes[current].name, user->notes[j].name) * dirrection > 0){
+				current = j;
+			}
+		}
+		user->notes[i] = user->notes[current];
+		user->notes[current] = temp;
+	}
+	saveNotebook(user);
+}
+
+
+
+//Swaps the position of 2 notes within the user account
+void swapNote(User *user, int note1, int note2){
+	Writing temp = user->notes[note1];
+	user->notes[note1] = user->notes[note2];
+	user->notes[note2] = temp;
+	saveNotebook(user);
+}
+
+
+//Moves a note to the desired position, shifting all other notes as needed
+void shiftNote(User *user, int note_pos, int new_pos){
+	Writing temp = user->notes[note_pos];
+	//If the element if moving left, all elements from the desired position to the original position shift right
+	if(note_pos > new_pos){
+		for(int i = note_pos; i > new_pos; i--){
+			user->notes[i] = user->notes[i-1];
+		}
+	}
+	//If the element if moving right, all elements from the desired position to the original position shift left
+	//No case is given for note_pos = new_pos because the for loop is skipped, giving the function no impact other than brief runtime
+	else{
+		for(int i = note_pos; i < new_pos; i++){
+			user->notes[i] = user->notes[i+1];
+		}
+	}
+	//Places the original note in desired position
+	user->notes[new_pos] = temp;
+	saveNotebook(user);
+}
+
+/* TO DO
+	*notebook deletion
+	*note deletion
+	*save notebook order to files
+	*fix note loading
+	*modify note and notebook printing to just happen every instance of the case (not required, just a thought from personal preference)
+	*chomp loaded notebooks to remove the newline
 */
-
