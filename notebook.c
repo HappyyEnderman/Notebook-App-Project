@@ -51,6 +51,7 @@ typedef enum Position{
 //Prototypes
 //General Functions
 int directoryExists(char* directory_name, char* current_directory);
+void chomp(char *str);
 
 //User Management Functions
 int checkUser(char* username, char* password);
@@ -67,6 +68,10 @@ int loadNotes(User *user, const char *notebook_filename);
 int saveNotebook(User *user);
 int editNote(User *user, int index, const char *new_title, const char *new_content);
 int deleteNote(User *user, int index);
+
+//Sorting Functions
+void timeSortNotebook(User *user, int dirrection);
+void alphaSortNotebook(User *user, int dirrection);
 
 //Main function
 int main(){
@@ -137,7 +142,8 @@ int main(){
 				printf("1. Create Notebook\n");
 				printf("2. Load Notebook\n");
 				printf("3. Logout\n");
-				printf("4. Delete Account\n");
+				printf("4. Sort Notebook\n");
+				printf("5. Delete Account\n");
 				scanf("%d", &input);
 				
 				switch(input){
@@ -157,7 +163,18 @@ int main(){
 					}
 					printf("Your notebooks:\n");
 					for(int i=0;i<user.notebook_count;i++){
-						printf("%d. %s (created %ld)\n", i+1, user.notebooks[i].name, (long)user.notebooks[i].time_created);
+						printf("%d. %s ", i+1, user.notebooks[i].name/*, (long)user.notebooks[i].time_created*/);
+						struct tm *item_t = localtime(&user.notebooks[i].time_created);
+						//prints the time of day created (hours stored 0-23)
+						if(item_t->tm_hour < 12){
+							printf("(Created: %d:%02d am", item_t->tm_hour + 1, item_t->tm_min);
+						}
+						else{
+							printf("(Created: %d:%02d pm", item_t->tm_hour - 12, item_t->tm_min);
+						}
+						//Adds the date in mm/dd/yyyy
+						printf("  %02d/%02d/%04d)\n", item_t->tm_mon + 1, item_t->tm_mday, item_t->tm_year + 1900);
+
 					}
 					int pick;
 					printf("Enter the number of the notebook you want to open: ");
@@ -181,6 +198,53 @@ int main(){
 					position = ENTRY;
 					break;
 				case 4:{
+					printf("Select sort type:\n");
+					printf("1. Time\n");
+					printf("2. Alpahabetical\n");
+					printf("3. Swap\n");
+					printf("4. Shift\n");
+					int sort_type;
+					scanf(" %d", &sort_type);
+					switch(sort_type){
+						case 1:{
+							printf("Enter 1 for ascending or any other value for descending: ");
+							int sort_dirrection;
+							scanf(" %d", &sort_dirrection);
+							if(sort_dirrection != 1){
+								sort_dirrection = -1;
+							}
+							timeSortNotebook(&user, sort_dirrection);
+							
+							break;
+						}
+						
+						case 2:{
+							printf("Enter 1 for ascending or any other value for descending: ");
+							int sort_dirrection;
+							scanf(" %d", &sort_dirrection);
+							if(sort_dirrection != 1){
+								sort_dirrection = -1;
+							}
+							alphaSortNotebook(&user, sort_dirrection);
+							
+							break;
+						}
+						
+						case 3:
+						
+							break;
+						
+						case 4:
+						
+							break;
+						
+						default:
+							printf("Invalid input.\n");
+							break;
+						}
+						break;
+				}
+				case 5:{
 					//Confirms account deletion
 					char confirmation;
 					printf("Are you sure you want to delete your account (Y/N): ");
@@ -212,6 +276,7 @@ int main(){
 				printf("1. View Notes\n");
 				printf("2. Create Note\n");
 				printf("3. Exit Notebook\n");
+				
 				scanf("%d", &input);
 
 				switch(input){
@@ -221,6 +286,7 @@ int main(){
 						} else {
 							for(int i=0;i<user.note_count;i++){
 								printf("%d. %s\n", i+1, user.notes[i].name);
+								printf("%s\n", user.notes[i].content);
 							}
 						}
 						break;
@@ -260,6 +326,7 @@ int main(){
 						user.note_count = 0;
 						position = USER;
 						break;
+						
 
 					default:
 						printf("Invalid input.\n");
@@ -300,6 +367,15 @@ int directoryExists(char* directory_name, char* current_directory){
 		closedir(directory);
 	}
 	return 0;
+}
+
+
+//A function to remove the ending \n from a string
+void chomp(char *str) {
+    int len = strlen(str);
+    if (len > 0 && str[len - 1] == '\n') {
+        str[len - 1] = '\0';
+    }
 }
 
 
@@ -716,7 +792,6 @@ int makeNotebook(char* notebook_name, User* user){
 	strcat(list_path, "/Notebook_List.txt");
 	FILE *list = fopen(list_path, "a");
 	if(list == NULL){
-		printf("banana");
 		perror("Failed to open file");
 		free(notebook_path);
 		free(list_path);
@@ -758,13 +833,13 @@ int makeNotebook(char* notebook_name, User* user){
 	free(list_path);
 	
 	//Creates the notebook text file to store notes
-	notebook_path = realloc(notebook_path, (strlen(notebook_path) + strlen(new_notebook_name) + 2) * sizeof(char));
+	notebook_path = realloc(notebook_path, (strlen(notebook_path) + strlen(new_notebook_name) + 1) * sizeof(char));
 	if(notebook_path == NULL){
 		printf("Memory allocation failed.\n");
 		free(new_notebook_name);
 		return 0;
 	}
-	strcat(notebook_path, "/");
+	//strcat(notebook_path, "/");
 	strcat(notebook_path, new_notebook_name);
 	FILE *notebook = fopen(notebook_path, "a");
 	free(new_notebook_name);
@@ -941,7 +1016,7 @@ int loadNotes(User *user, const char *notebook_filename){
             chomp(line);
             if(strncmp(line, "Time Created:", 13) == 0){
                 const char *tptr = line + 13;
-                while(*tptr == ' ') + {
+                while(*tptr == ' '){
 					tptr++;
 				}
                 t_created = atol(tptr);
@@ -1005,6 +1080,26 @@ int loadNotes(User *user, const char *notebook_filename){
 
     return 1;
 }
+
+
+int saveUser(User *user){
+    /*if(!user || !user->filepath) return 0;
+	char *notebooks = malloc((strlen(user->filepath) + strlen("/Notebook_List.txt") + 1) * sizeof(char));
+	strcpy(notebooks, user->filepath);
+	strcat(notebooks, "/Notebook_List.txt");
+    FILE *f = fopen(notebooks, "w");
+    if(!f) return 0;
+	free(notebooks);
+    for(int i=0;i<user->notebook_count;i++){
+		// All of the code for saving the notes content.
+        fprintf(f, "Name: %s\n", user->notebooks[i].name ? user->notebooks[i].name : "");
+        fprintf(f, "Time Created: %ld\n\n", (long)user->notebooks[i].time_created);
+    }
+    fclose(f);*/
+    return 1;
+}
+
+
 
 int saveNotebook(User *user){
     if(!user || !user->notes_path) return 0;
@@ -1103,3 +1198,76 @@ int deleteNote(User *user, int index){
 
     return saveNotebook(user);
 }
+
+
+/*
+Need list to sort, and it's length
+Take the time of each writing
+Create a temporary spot to put an element
+swap the position of the elements
+
+
+Should start by looking at all elements, and skip past one earlier element each time
+Should factor direction into matter by multiplying the result. If one would have been higher, negative makes it lower instead
+
+Doesn't need to look at the lest element, as that should naturally end as the lowest. Testing needed.
+
+
+
+
+
+*/
+
+void timeSortNotebook(User *user, int dirrection){
+	//Controlls the starting position
+	for(int i = 0; i < user->notebook_count - 1; i++){
+		int current = i; // stores the currently held position. This may be newest or oldest depending on direction.
+		Writing temp = user->notebooks[i];
+		//Looks through each value
+		for(int j = i + 1; j < user->notebook_count; j++){
+			
+			//Compares the time of the current selected and the next element of the array.
+			if(user->notebooks[current].time_created * dirrection > user->notebooks[j].time_created * dirrection){
+				current = j;
+			}
+			
+			
+		}
+		user->notebooks[i] = user->notebooks[current];
+		user->notebooks[current] = temp;
+	}
+	saveUser(user);
+}
+
+
+
+void alphaSortNotebook(User *user, int dirrection){
+	//Controlls the starting position
+	for(int i = 0; i < user->notebook_count - 1; i++){
+		int current = i; // stores the currently held position. This may be newest or oldest depending on direction.
+		Writing temp = user->notebooks[i];
+		//Looks through each value
+		for(int j = i + 1; j < user->notebook_count; j++){
+			
+			//Compares the time of the current selected and the next element of the array.
+			if(strcmp(user->notebooks[current].name, user->notebooks[j].name) * dirrection < 0){
+				current = j;
+			}
+			
+			
+		}
+		user->notebooks[i] = user->notebooks[current];
+		user->notebooks[current] = temp;
+	}
+	saveUser(user);
+}
+
+
+/*
+void swapNote
+
+
+
+void shiftNote
+*/
+

@@ -1,0 +1,20 @@
+Title: vegetables
+Time Created: 1764556072
+Content:
+carrot
+lettuce
+tomato
+ENDNOTE
+Title: fruit
+Time Created: 1764556093
+Content:
+apple
+orange
+banana
+ENDNOTE
+Title: meat
+Time Created: 1764556107
+Content:
+ham
+beef
+ENDNOTE
