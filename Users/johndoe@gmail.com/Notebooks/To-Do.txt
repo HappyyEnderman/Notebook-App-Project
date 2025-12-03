@@ -1,0 +1,20 @@
+Title: to
+Time Created: 1764555996
+Content:
+do
+brush teeth
+walk dog
+go to work
+return from work
+make supper
+sleep
+ENDNOTE
+Title: weekends
+Time Created: 1764556026
+Content:
+make breakfast
+brush teeth
+walk dog
+clean house
+sleep
+ENDNOTE
