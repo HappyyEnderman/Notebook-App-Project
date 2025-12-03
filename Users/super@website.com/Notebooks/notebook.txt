@@ -1,0 +1,22 @@
+Title: newNote1
+Time Created: 1764630423
+Content:
+this note now has a second line
+this is the second line
+ENDNOTE
+Title: newNote2
+Time Created: 1764630430
+Content:
+note 2 content
+and another line
+ENDNOTE
+Title: note
+Time Created: 1764630530
+Content:
+
+ENDNOTE
+Title: anotherNote
+Time Created: 1764630543
+Content:
+words
+ENDNOTE
