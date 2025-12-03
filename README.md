@@ -2,7 +2,7 @@
 A theoretical notebook app meant to run in command line interface and simulate a web based notes system
 
 To Use
--Download the files and a C compiler such as cygwin
+-Download the files and a C compiler such as cygwin with gcc
 -Compile notebook.c using your C compiler
 -Run the created .exe file within the compiler terminal
 
