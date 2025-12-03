@@ -15,8 +15,9 @@
 *Time_created is an integer time that can easily be compared
 */
 typedef struct Writing{
-	time_t time_created;
-	char* name;
+    time_t time_created;
+    char* name;      
+    char* content;   
 } Writing;
 
 /*Structure to store the active user
@@ -27,17 +28,15 @@ typedef struct Writing{
 *Note: notes_path, notes, and note_count are only set if a notebook is openned
 */
 typedef struct User{
-	char *email;
-	char *password;
-	char *filepath;
-	Writing *notebooks;
-	int notebook_count;
-	char *notes_path;
-	Writing *notes;
-	int note_count;
+    char *email;
+    char *password;
+    char *filepath;
+    Writing *notebooks;
+    int notebook_count;
+    char *notes_path;
+    Writing *notes;
+    int note_count;
 } User;
-
-
 
 
 //Enums
@@ -47,11 +46,11 @@ typedef enum Position{
 	USER,
 	NOTEBOOKS
 }Position;
-//Global Variables
 
 //Prototypes
 //General Functions
 int directoryExists(char* directory_name, char* current_directory);
+void chomp(char *str);
 
 //User Management Functions
 int checkUser(char* username, char* password);
@@ -63,9 +62,6 @@ void logout(User *user);
 //Notebook Management Functions
 int makeNotebook(char* notebook_name, User* user);
 int loadNotebooks(User *user, char *filepath);
-<<<<<<< Updated upstream
-void makeNote(char* note);
-=======
 int makeNote(char* note_title, char* content, User* user);
 int loadNotes(User *user, const char *notebook_filename);
 int saveNotebook(User *user);
@@ -79,15 +75,9 @@ void alphaSortNotebook(User *user, int dirrection);
 void swapNotebook(User *user, int note1, int note2);
 void shiftNotebook(User *user, int note_pos, int new_pos);
 
-void timeSortNote(User *user, int dirrection);
-void alphaSortNote(User *user, int dirrection);
-void swapNote(User *user, int note1, int note2);
-void shiftNote(User *user, int note_pos, int new_pos);
->>>>>>> Stashed changes
-
 //Main function
 int main(){
-	//variables to control the interface
+	// Variables to control the interface
 	int running = 1;
 	int input = 0;
 	int active_notebook_id;
@@ -97,7 +87,7 @@ int main(){
 	printf("——Welcome to EasyNote——\n");
 	while(running){
 		switch(position){
-			//Login Page Menu
+			// LOGIN MENU
 			case ENTRY:
 			printf("Please select a menu option:\n");
 			printf("1. Log in\n");
@@ -149,15 +139,9 @@ int main(){
 			}
 			break;
 			
-			//Notebooks and Account Deletion Menu
+			// USER MENU
 			case USER:
 				printf("Please select a menu option:\n");
-<<<<<<< Updated upstream
-				printf("1. Make Notebook\n");
-				printf("2. Logout\n");
-				printf("3. Delete Account\n");
-				scanf("%d", &input);
-=======
 				printf("1. Create Notebook\n");
 				printf("2. Load Notebook\n");
 				printf("3. Logout\n");
@@ -185,7 +169,6 @@ int main(){
 				}		
 				scanf("%d", &input);
 
->>>>>>> Stashed changes
 				switch(input){
 				case 1:{
 					//Scans notebook name
@@ -196,13 +179,6 @@ int main(){
 					free(notebook_name);
 					break;
 				}
-<<<<<<< Updated upstream
-				case 2:
-					logout(&user);
-					position = ENTRY;
-					break;
-				case 3:{
-=======
 				case 2: {
 					int pick;
 					printf("Enter the number of the notebook you want to open: ");
@@ -333,7 +309,6 @@ int main(){
 				}
 				
 				case 6:{
->>>>>>> Stashed changes
 					//Confirms account deletion
 					char confirmation;
 					printf("Are you sure you want to delete your account (Y/N): ");
@@ -359,12 +334,8 @@ int main(){
 			}
 				break;
 				
-			//Create and Edit Notes Menu
+			// NOTEBOOK MENU
 			case NOTEBOOKS:
-<<<<<<< Updated upstream
-				printf("Under Construction: Returning to login screen\n");
-				position = ENTRY;
-=======
 				printf("\nNotebook Menu\n");
 				printf("1. Create Note\n");
 				printf("2. Edit Note\n");
@@ -609,9 +580,168 @@ int main(){
 					default:
 						printf("Invalid input.\n");
 				}
->>>>>>> Stashed changes
 				break;
 				
+				/*scanf("%d", &input);
+
+				switch(input){
+					case 1:
+						if(user.note_count == 0){
+							printf("No notes available. Create a note to view notes.\n");
+						} else {
+							for(int i=0;i<user.note_count;i++){
+								printf("%d. %s\n", i+1, user.notes[i].name);
+								printf("%s\n", user.notes[i].content);
+							}
+						}
+						break;
+
+					case 2: {
+						char title[256];
+						char content[5000];
+						content[0] = '\0';
+
+						printf("Enter note title: ");
+						scanf("%255s", title);
+
+						printf("Enter note content. Enter a single '.' on a line to finish:\n");
+
+						getchar();
+						// An infinite loop that reads line from the user until they enter "."
+						while (1) {
+							char line[512];
+							if (!fgets(line, sizeof(line), stdin)) {
+								break;
+							}
+							if (strcmp(line, ".\n") == 0 || strcmp(line, ".\r\n") == 0 || strcmp(line, ".") == 0)
+								break;
+
+							strcat(content, line);
+						}
+
+						if(!makeNote(title, content, &user)){
+							printf("Failed to make note.\n");
+						}
+						break;
+					}
+
+					case 3:
+						free(user.notes);
+						user.notes = NULL;
+						user.note_count = 0;
+						position = USER;
+						break;
+						
+					case 4:{
+						//Ensures there are notes to sort
+						if(user.note_count == 0){
+							printf("No notes available.\n");
+							break;
+						}
+						//Prompts for sort type
+						printf("Select sort type:\n");
+						printf("1. Time\n");
+						printf("2. Alpahabetical\n");
+						printf("3. Swap\n");
+						printf("4. Shift\n");
+						int sort_type;
+						scanf(" %d", &sort_type);
+						switch(sort_type){
+							//Time Sort
+							case 1:{
+								printf("Enter 1 for ascending or any other value for descending: ");
+								int sort_dirrection;
+								scanf(" %d", &sort_dirrection);
+								if(sort_dirrection != 1){
+									sort_dirrection = -1;
+								}
+								timeSortNote(&user, sort_dirrection);
+								
+								break;
+							}
+							//Alphabetical Sort
+							case 2:{
+								printf("Enter 1 for ascending or any other value for descending: ");
+								int sort_dirrection;
+								scanf(" %d", &sort_dirrection);
+								if(sort_dirrection != 1){
+									sort_dirrection = -1;
+								}
+								alphaSortNote(&user, sort_dirrection);
+								
+								break;
+							}
+							//Swap
+							case 3:{
+								//Prints the notebooks for user reference
+								if(user.note_count == 0){
+									printf("No notes available. Create a note to view notes.\n");
+								} else {
+									for(int i=0;i<user.note_count;i++){
+										printf("%d. %s\n", i+1, user.notes[i].name);
+										printf("%s\n", user.notes[i].content);
+									}
+								}
+								//Prompts user for input
+								int note1;
+								int note2;
+								printf("Enter the number of the first note you want to swap: ");
+								scanf(" %d", &note1);
+								if(note1 < 1 || note1 > user.note_count){
+									printf("Invalid Input\n");
+								}
+								printf("Enter the number of the second note you want to swap: ");
+								scanf(" %d", &note2);
+								if(note2 < 1 || note2 > user.note_count){
+									printf("Invalid Input\n");
+								}
+								swapNote(&user, note1 - 1, note2 - 1);
+								break;
+							}
+							//Shift
+							case 4:{
+								//Prints the notebooks for user reference
+								if(user.note_count == 0){
+									printf("No notes available. Create a note to view notes.\n");
+								} else {
+									for(int i=0;i<user.note_count;i++){
+										printf("%d. %s\n", i+1, user.notes[i].name);
+										printf("%s\n", user.notes[i].content);
+									}
+								}
+								//Prompts user for input
+								int note_pos;
+								int new_pos;
+								printf("Enter the number of the note you want to shift: ");
+								scanf(" %d", &note_pos);
+								if(note_pos < 1 || note_pos > user.note_count){
+									printf("Invalid Input\n");
+								}
+								printf("Enter the number of the position you want the note to shift to: ");
+								scanf(" %d", &new_pos);
+								if(new_pos < 1 || new_pos > user.note_count){
+									printf("Invalid Input\n");
+								}
+								shiftNote(&user, note_pos - 1, new_pos - 1);
+								break;
+							}
+							
+							
+							default:
+								printf("Invalid input.\n");
+								break;
+							}
+							break;
+					}
+						
+					
+						
+
+					default:
+						printf("Invalid input.\n");
+				}
+				break;*/
+
 			//This should be impossible to reach, but protects against edge cases with the user position
 			default:
 				printf("An unknown error has occurred. Returning to login screen. All unsaved progress will be lost.\n");
@@ -646,6 +776,15 @@ int directoryExists(char* directory_name, char* current_directory){
 		closedir(directory);
 	}
 	return 0;
+}
+
+
+//A function to remove the ending \n from a string
+void chomp(char *str) {
+    int len = strlen(str);
+    if (len > 0 && str[len - 1] == '\n') {
+        str[len - 1] = '\0';
+    }
 }
 
 
@@ -705,7 +844,7 @@ int checkUser(char* username, char* password){
 		big_flag = 0;
 	}
 			
-	//checks if the password contains a lowercase letter
+	//Checks if the password contains a lowercase letter
 	small_flag = 0;
 	for(int i = 0; i < password_length; i++){
 		if(islower((unsigned char)password[i])){
@@ -765,7 +904,7 @@ int checkUser(char* username, char* password){
 		printf("Password must contain at least one special character.\n");
 		big_flag = 0;
 	}
-	
+
 	//Checks password length
 	if(password_length < 7 || password_length > 28){
 		printf("Password must be between 7 and 28 characters.\n");
@@ -784,7 +923,7 @@ int checkUser(char* username, char* password){
 int makeUser(char* username, char* password, User* user){
 	if(checkUser(username, password)){
 		
-		//Checks if email is a repeat
+	//Checks if email is a repeat
 		int flag = directoryExists(username, "./Users");
 		if(flag == -1){
 			printf("Failed to check existing users. Please try again.\n");
@@ -916,6 +1055,17 @@ int deleteUser(User *user){
 		free(settings_path);
 	}
 	free(settings_path);
+	
+	//Delete the Notebook list
+	char *notebook_list_path = malloc((strlen(user->filepath) + strlen("/Notebook_List.txt") + 1) * sizeof(char));
+	strcpy(notebook_list_path, user->filepath);
+	strcat(notebook_list_path, "/Notebook_List.txt");
+	if(remove(notebook_list_path) != 0){
+		perror("Failed to remove user settings");
+		free(notebook_list_path);
+	}
+	free(notebook_list_path);
+	
 	//Deletes the user path
 	if(rmdir(user->filepath) != 0){
 		perror("Failed to remove user directory");
@@ -931,7 +1081,7 @@ int deleteUser(User *user){
 */
 User login(char* username, char* password){
 	User output = {0};
-	//Checks if the user account exists as a directory
+	
 	if(directoryExists(username, "./Users") == 1){
 		//Create the path to the user's settings file and open it
 		char *filepath = malloc((27 + strlen(username))*sizeof(char));
@@ -959,7 +1109,7 @@ User login(char* username, char* password){
 		
 		//Reads the username and password of the account
 		/*IMPORTANT: The space at the start of the inputs from fscanf allows the program to skip whitespace.
-		Without it, the newline would be read immediately when checking password, giving it no value.*/
+				Without it, the newline would be read immediately when checking password, giving it no value.*/
 		output.email = malloc(129 * sizeof(char));
 		if(output.email == NULL){
 			logout(&output);
@@ -1062,7 +1212,6 @@ int makeNotebook(char* notebook_name, User* user){
 	strcat(list_path, "/Notebook_List.txt");
 	FILE *list = fopen(list_path, "a");
 	if(list == NULL){
-		printf("banana");
 		perror("Failed to open file");
 		free(notebook_path);
 		free(list_path);
@@ -1081,6 +1230,7 @@ int makeNotebook(char* notebook_name, User* user){
 		fclose(list);
 		return 0;
 	}
+	
 	//Sets the notebook name in memory
 	user->notebooks[user->notebook_count-1].name = malloc((strlen(notebook_name) + 1) * sizeof(char));
 	if(user->notebooks[user->notebook_count-1].name == NULL){
@@ -1103,13 +1253,13 @@ int makeNotebook(char* notebook_name, User* user){
 	free(list_path);
 	
 	//Creates the notebook text file to store notes
-	notebook_path = realloc(notebook_path, (strlen(notebook_path) + strlen(new_notebook_name) + 2) * sizeof(char));
+	notebook_path = realloc(notebook_path, (strlen(notebook_path) + strlen(new_notebook_name) + 1) * sizeof(char));
 	if(notebook_path == NULL){
 		printf("Memory allocation failed.\n");
 		free(new_notebook_name);
 		return 0;
 	}
-	strcat(notebook_path, "/");
+	//strcat(notebook_path, "/");
 	strcat(notebook_path, new_notebook_name);
 	FILE *notebook = fopen(notebook_path, "a");
 	free(new_notebook_name);
@@ -1130,9 +1280,6 @@ int makeNotebook(char* notebook_name, User* user){
 *IMPORTANT: If read from directories, order will not be kept, so it is important to read from the user settings list instead
 */
 int loadNotebooks(User *user, char* filepath){
-<<<<<<< Updated upstream
-	return 1;
-=======
 	// If the notebook doesn't exist, return 0.
     if (user == NULL || filepath == NULL) {
 		return 0;
@@ -1647,5 +1794,4 @@ void shiftNote(User *user, int note_pos, int new_pos){
 	//Places the original note in desired position
 	user->notes[new_pos] = temp;
 	saveNotebook(user);
->>>>>>> Stashed changes
 }
