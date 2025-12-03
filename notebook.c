@@ -17,6 +17,7 @@
 typedef struct Writing{
 	time_t time_created;
 	char* name;
+	char* content;
 } Writing;
 
 /*Structure to store the active user
@@ -52,6 +53,7 @@ typedef enum Position{
 //Prototypes
 //General Functions
 int directoryExists(char* directory_name, char* current_directory);
+void chomp(char *str);
 
 //User Management Functions
 int checkUser(char* username, char* password);
@@ -63,9 +65,6 @@ void logout(User *user);
 //Notebook Management Functions
 int makeNotebook(char* notebook_name, User* user);
 int loadNotebooks(User *user, char *filepath);
-<<<<<<< Updated upstream
-void makeNote(char* note);
-=======
 int makeNote(char* note_title, char* content, User* user);
 int loadNotes(User *user, const char *notebook_filename);
 int saveNotebook(User *user);
@@ -83,7 +82,6 @@ void timeSortNote(User *user, int dirrection);
 void alphaSortNote(User *user, int dirrection);
 void swapNote(User *user, int note1, int note2);
 void shiftNote(User *user, int note_pos, int new_pos);
->>>>>>> Stashed changes
 
 //Main function
 int main(){
@@ -99,7 +97,7 @@ int main(){
 		switch(position){
 			//Login Page Menu
 			case ENTRY:
-			printf("Please select a menu option:\n");
+			printf("\nPlease select a menu option:\n");
 			printf("1. Log in\n");
 			printf("2. Sign up\n");
 			printf("3. Exit Program\n");
@@ -151,13 +149,7 @@ int main(){
 			
 			//Notebooks and Account Deletion Menu
 			case USER:
-				printf("Please select a menu option:\n");
-<<<<<<< Updated upstream
-				printf("1. Make Notebook\n");
-				printf("2. Logout\n");
-				printf("3. Delete Account\n");
-				scanf("%d", &input);
-=======
+				printf("\nPlease select a menu option:\n");
 				printf("1. Create Notebook\n");
 				printf("2. Load Notebook\n");
 				printf("3. Logout\n");
@@ -167,25 +159,25 @@ int main(){
 				
 				if(user.notebook_count == 0){
 					printf("No notebooks available.\n");
-					break;
 				}
-				printf("Your notebooks:\n");
-				for(int i=0;i<user.notebook_count;i++){
-					printf("%d. %s ", i+1, user.notebooks[i].name/*, (long)user.notebooks[i].time_created*/);
-					struct tm *item_t = localtime(&user.notebooks[i].time_created);
-					//prints the time of day created (hours stored 0-23)
-					if(item_t->tm_hour < 12){
-						printf("(Created: %d:%02d am", item_t->tm_hour + 1, item_t->tm_min);
-					}
-					else{
-						printf("(Created: %d:%02d pm", item_t->tm_hour - 12, item_t->tm_min);
-					}
-					//Adds the date in mm/dd/yyyy
-					printf("  %02d/%02d/%04d)\n", item_t->tm_mon + 1, item_t->tm_mday, item_t->tm_year + 1900);
-				}		
+				else{
+					printf("Your notebooks:\n");
+					for(int i=0;i<user.notebook_count;i++){
+						printf("%d. %s ", i+1, user.notebooks[i].name/*, (long)user.notebooks[i].time_created*/);
+						struct tm *item_t = localtime(&user.notebooks[i].time_created);
+						//prints the time of day created (hours stored 0-23)
+						if(item_t->tm_hour < 12){
+							printf("(Created: %d:%02d am", item_t->tm_hour, item_t->tm_min);
+						}
+						else{
+							printf("(Created: %d:%02d pm", item_t->tm_hour - 11, item_t->tm_min);
+						}
+						//Adds the date in mm/dd/yyyy
+						printf("  %02d/%02d/%04d)\n", item_t->tm_mon + 1, item_t->tm_mday, item_t->tm_year + 1900);
+					}		
+				}
 				scanf("%d", &input);
 
->>>>>>> Stashed changes
 				switch(input){
 				case 1:{
 					//Scans notebook name
@@ -196,13 +188,6 @@ int main(){
 					free(notebook_name);
 					break;
 				}
-<<<<<<< Updated upstream
-				case 2:
-					logout(&user);
-					position = ENTRY;
-					break;
-				case 3:{
-=======
 				case 2: {
 					int pick;
 					printf("Enter the number of the notebook you want to open: ");
@@ -333,7 +318,6 @@ int main(){
 				}
 				
 				case 6:{
->>>>>>> Stashed changes
 					//Confirms account deletion
 					char confirmation;
 					printf("Are you sure you want to delete your account (Y/N): ");
@@ -361,10 +345,6 @@ int main(){
 				
 			//Create and Edit Notes Menu
 			case NOTEBOOKS:
-<<<<<<< Updated upstream
-				printf("Under Construction: Returning to login screen\n");
-				position = ENTRY;
-=======
 				printf("\nNotebook Menu\n");
 				printf("1. Create Note\n");
 				printf("2. Edit Note\n");
@@ -609,7 +589,6 @@ int main(){
 					default:
 						printf("Invalid input.\n");
 				}
->>>>>>> Stashed changes
 				break;
 				
 			//This should be impossible to reach, but protects against edge cases with the user position
@@ -646,6 +625,14 @@ int directoryExists(char* directory_name, char* current_directory){
 		closedir(directory);
 	}
 	return 0;
+}
+
+//A function to remove the ending \n from a string
+void chomp(char *str) {
+    int len = strlen(str);
+    if (len > 0 && str[len - 1] == '\n') {
+        str[len - 1] = '\0';
+    }
 }
 
 
@@ -894,6 +881,7 @@ int deleteUser(User *user){
 			if(remove(filepath) != 0){
 				free(filepath);
 				perror("Failed to remove notebook");
+				return 0;
 			}
 			free(filepath);
 		}
@@ -904,6 +892,7 @@ int deleteUser(User *user){
 	//Deletes the notebooks directory
 	if(rmdir(notebook_path) != 0){
 		perror("Failed to remove directory");
+		return 0;
 	}
 	free(notebook_path);
 	
@@ -914,11 +903,25 @@ int deleteUser(User *user){
 	if(remove(settings_path) != 0){
 		perror("Failed to remove user settings");
 		free(settings_path);
+		return 0;
 	}
 	free(settings_path);
+	
+	//Deletes notebook list
+	char *notebook_list_path = malloc((strlen(user->filepath) + strlen("/Notebook_List.txt") + 1) * sizeof(char));
+	strcpy(notebook_list_path, user->filepath);
+	strcat(notebook_list_path, "/Notebook_List.txt");
+	if(remove(notebook_list_path) != 0){
+		perror("Failed to remove user settings");
+		free(notebook_list_path);
+		return 0;
+	}
+	free(notebook_list_path);
+	
 	//Deletes the user path
 	if(rmdir(user->filepath) != 0){
 		perror("Failed to remove user directory");
+		return 0;
 	}
 	//logout(user);
 	return 1;
@@ -1130,9 +1133,6 @@ int makeNotebook(char* notebook_name, User* user){
 *IMPORTANT: If read from directories, order will not be kept, so it is important to read from the user settings list instead
 */
 int loadNotebooks(User *user, char* filepath){
-<<<<<<< Updated upstream
-	return 1;
-=======
 	// If the notebook doesn't exist, return 0.
     if (user == NULL || filepath == NULL) {
 		return 0;
@@ -1647,5 +1647,4 @@ void shiftNote(User *user, int note_pos, int new_pos){
 	//Places the original note in desired position
 	user->notes[new_pos] = temp;
 	saveNotebook(user);
->>>>>>> Stashed changes
 }
